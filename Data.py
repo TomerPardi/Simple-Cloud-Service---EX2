@@ -4,7 +4,7 @@ import os
 
 class Data:
     def __init__(self):
-        self.__identifies = IDs()
+        self._identifies = IDs()
         directory_path = os.getcwd()
         # Directory
         directory = "ServerData"
@@ -22,7 +22,18 @@ class Data:
             line = file.read(1024)
         sock.receive()
 
-    def send_directory(self, path, sock):
+    def add_client(self, id):
+        self._identifies.add_client(id)
+        # Path
+        path = os.path.join(self.__path, id)
+        os.mkdir(path)
+
+    def add_pc(self, id, personal_path):
+        paths = self._identifies.get_id_value(id)
+        paths[personal_path] = set()
+        self.send_folder()
+
+    def send_folder(self, path, sock):
         sock.send(path)
         sock.receive()
         directory = open(path)
@@ -30,4 +41,4 @@ class Data:
             if os.path.isfile(path):
                 self.send_file(path, sock)
             elif os.path.isdir(path):
-                self.send_directory(path, sock)
+                self.send_folder(path, sock)
