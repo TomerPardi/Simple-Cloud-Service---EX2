@@ -12,3 +12,7 @@ class IDs:
     def remove_id(self, id):
         if id in self.__keys.keys():
             self.__keys.pop(id)
+
+    def add_pc(self,id, personal_path):
+        paths = self.get_id_value(id)
+        paths[personal_path] = set()
