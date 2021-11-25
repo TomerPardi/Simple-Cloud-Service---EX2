@@ -17,7 +17,8 @@ class Data:
         directory = "ServerData"
         # Path
         self.__path = os.path.join(directory_path, directory)
-        os.mkdir(self.__path)
+        if not os.path.isdir(self.__path):
+            os.mkdir(self.__path)
 
     def receive_folder(self, id, personal_path):
         self.identifies.add_pc(id, personal_path)
