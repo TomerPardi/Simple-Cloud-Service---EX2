@@ -6,7 +6,7 @@ import Utils
 class Client:
     def __init__(self):
         self.__ip_address = sys.argv[1]
-        self.__server_port = sys.argv[2]
+        self.__server_port = int(sys.argv[2])
         self.__path = sys.argv[3]
         self.__time = sys.argv[4]
         self.__id = ""
@@ -16,24 +16,26 @@ class Client:
     def handle_new_pc(self, ID):
         self.__sock.send(ID)
         string = ""
-        while string is not b"got id":
+        while string != b"got id":
             string += self.__sock.recv(64)
         self.__sock.send(bytes(self.__sock.getsockname()))
         string = ""
-        while string is not b"got socket name":
+        while string != b"got socket name":
             string += self.__sock.recv(64)
         Utils.receive_folder(self.__sock, self.__path)
 
     # handle new client situation - while ID isn't exist
     def handle_new_client(self):
         self.__sock.send(b"no_id")
-        string = ""
-        while string is not b"got id":
+        string = b""
+        while string != b"got id":
             string += self.__sock.recv(64)
         # TODO: change identification by socket and now by personal path
-        self.__sock.send(bytes(self.__sock.getsockname()))
-        string = ""
-        while string is not b"got socket name":
+        # get socket name (getsockname() returns tuple name
+        socket_name = str(self.__sock.getsockname()[0]) + "-" + str(self.__sock.getsockname()[1]) # "ip-port"
+        self.__sock.send(str.encode(socket_name))
+        string = b""
+        while string != b"got socket name":
             string += self.__sock.recv(64)
 
         while len(self.__id) < 128:
@@ -46,3 +48,7 @@ class Client:
             self.handle_new_pc(id)
         except:
             self.handle_new_client()
+
+if __name__ == '__main__':
+    client = Client()
+    client.start()

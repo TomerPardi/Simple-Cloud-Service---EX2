@@ -33,6 +33,6 @@ class Server:
         # personal_path = self.__sock.recv(512)
         # self.__sock.send(b"got personal path")
         # self.id_manager(id, personal_path, client)
-        socket_name = self.__sock.recv(512).decode()
+        socket_name = self.__sock.recv(128).decode()
         self.__sock.send(b"got socket name")
         self.id_manager(id, socket_name, client)

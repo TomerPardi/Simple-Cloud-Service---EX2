@@ -22,11 +22,11 @@ class Data:
         os.mkdir(self.__mypath) # make the directory
 
     # this function is for getting data from new computer that connects with known ID
-    def receive_folder(self, id, personal_path):
+    def receive_folder(self, id, socket_name, client):
         # an function to add new pc under known ID
-        self.identifies.add_pc(id, personal_path)
+        self.identifies.add_pc(id, socket_name)
         # the process that copies the files from new pc to IDs folder in server side
-        with self.__sock, self.__sock.makefile('rb') as clientfile:
+        with client, client.makefile('rb') as clientfile:
             while True:
                 raw = clientfile.readline()
                 if not raw: break  # no more files, server closed connection.
