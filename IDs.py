@@ -1,3 +1,4 @@
+# class that manages ID dictionary
 class IDs:
     def __init__(self):
         self.__keys = dict()
@@ -13,6 +14,7 @@ class IDs:
         if id in self.__keys.keys():
             self.__keys.pop(id)
 
+    # TODO: we have the same function at Data.py
     def add_pc(self,id, personal_path):
         paths = self.get_id_value(id)
         paths[personal_path] = set()

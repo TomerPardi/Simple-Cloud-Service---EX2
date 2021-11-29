@@ -1,8 +1,9 @@
-import os
 
+import os
+# limits
 chunk_size = 1_000_000
 
-
+# util function to receive folder from sender
 def receive_folder(sock, local_path):
     with sock, sock.makefile('rb') as clientfile:
         while True:
@@ -29,7 +30,7 @@ def receive_folder(sock, local_path):
             # socket was closed early.
             break
 
-
+# util function to send folder to receiver
 def send_folder(path, receiver):
     with receiver:
         for path, dirs, files in os.walk(path):

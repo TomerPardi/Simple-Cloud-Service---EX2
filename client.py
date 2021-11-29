@@ -13,31 +13,31 @@ class Client:
         self.__sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.__sock.connect((self.__ip_address, self.__server_port))
 
-    def handle_new_pc(self, id):
-        self.__sock.send(id)
-        str = ""
-        while str is not b"got id":
-            str += self.__sock.recv(64)
+    def handle_new_pc(self, ID):
+        self.__sock.send(ID)
+        string = ""
+        while string is not b"got id":
+            string += self.__sock.recv(64)
         self.__sock.send(bytes(self.__path))
-        str = ""
-        while str is not b"got personal path":
-            str += self.__sock.recv(64)
+        string = ""
+        while string is not b"got personal path":
+            string += self.__sock.recv(64)
         Utils.receive_folder(self.__sock, self.__path)
 
+    # handle new client situation - while ID isn't exist
     def handle_new_client(self):
-        s.send(b"no_id")
-        str = ""
-        while str is not b"got id":
-            str += self.__sock.recv(64)
-
+        self.__sock.send(b"no_id")
+        string = ""
+        while string is not b"got id":
+            string += self.__sock.recv(64)
+        # TODO: change identification by socket and now by personal path
         self.__sock.send(bytes(self.__path))
-        str = ""
-        while str is not b"got personal path":
-            str += self.__sock.recv(64)
+        string = ""
+        while string is not b"got personal path":
+            string += self.__sock.recv(64)
 
         while len(self.__id) < 128:
-            self.__id += self.__sock.recv(64).decode("UTF-8")
-
+            self.__id += self.__sock.recv(64).encode()
         Utils.send_folder(self.__path, self.__sock)
 
     def start(self):
@@ -46,9 +46,3 @@ class Client:
             self.handle_new_pc(id)
         except:
             self.handle_new_client()
-
-
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.connect(('', 12345))
-
-if __name__ == '__main__':
