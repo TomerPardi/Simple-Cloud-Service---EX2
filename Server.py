@@ -27,9 +27,12 @@ class Server:
         client, address = self.__sock.accept()
         id = ""
         while len(id) < 128 and id != "no_id":
-            id += self.__sock.recv(64).encode()
+            id += self.__sock.recv(64).decode()
         self.__sock.send(b"got id")
         # TODO: need to change to identify each pc by socket and not personal path
-        personal_path = self.__sock.recv(512)
-        self.__sock.send(b"got personal path")
-        self.id_manager(id, personal_path, client)
+        # personal_path = self.__sock.recv(512)
+        # self.__sock.send(b"got personal path")
+        # self.id_manager(id, personal_path, client)
+        socket_name = self.__sock.recv(512).decode()
+        self.__sock.send(b"got socket name")
+        self.id_manager(id, socket_name, client)

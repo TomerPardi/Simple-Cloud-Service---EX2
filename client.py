@@ -18,9 +18,9 @@ class Client:
         string = ""
         while string is not b"got id":
             string += self.__sock.recv(64)
-        self.__sock.send(bytes(self.__path))
+        self.__sock.send(bytes(self.__sock.getsockname()))
         string = ""
-        while string is not b"got personal path":
+        while string is not b"got socket name":
             string += self.__sock.recv(64)
         Utils.receive_folder(self.__sock, self.__path)
 
@@ -31,13 +31,13 @@ class Client:
         while string is not b"got id":
             string += self.__sock.recv(64)
         # TODO: change identification by socket and now by personal path
-        self.__sock.send(bytes(self.__path))
+        self.__sock.send(bytes(self.__sock.getsockname()))
         string = ""
-        while string is not b"got personal path":
+        while string is not b"got socket name":
             string += self.__sock.recv(64)
 
         while len(self.__id) < 128:
-            self.__id += self.__sock.recv(64).encode()
+            self.__id += self.__sock.recv(64).decode()
         Utils.send_folder(self.__path, self.__sock)
 
     def start(self):

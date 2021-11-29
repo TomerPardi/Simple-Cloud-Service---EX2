@@ -68,8 +68,8 @@ class Data:
         id = ''.join(random.choices(string.ascii_letters + string.digits, k=128))
         # add it to the identifies dict
         self.identifies.add_client(id)
-        # maje a path to this ID; there we are going to add all files this client uploads
-        path = os.path.join(self.__path, id)
+        # create a path to this ID; there we are going to add all files this client uploads
+        path = os.path.join(self.__mypath, id)
         os.mkdir(path)
         # add the path to map between id and path easily
         self.__paths[id] = path
@@ -77,10 +77,10 @@ class Data:
 
     # this function is for saving for each ID the computers that connects under this ID
     # we want to identify each computer by its path TODO: change it to identify by socket
-    def add_pc(self, id, personal_path, client):
+    def add_pc(self, id, socket_name, client):
         id_dict = self.identifies.get_id_value(id)
         # TODO: identify each pc by its socket
-        id_dict[personal_path] = set() # this dictionary will hold for each key set of updates.
+        id_dict[socket_name] = set() # this dictionary will hold for each key set of updates.
         # send the ID folder to new pc we just registered
         self.send_folder(self.__paths[id], client)
 
@@ -89,9 +89,9 @@ class Data:
         self.send_folder(self.__paths[id], client)
 
     # function that sends folder to receiver TODO: we have the same function at Utils - check it
-    def send_folder(self, path, client):
+    def send_folder(self, source_path, client):
         with client:
-            for path, dirs, files in os.walk(path):
+            for path, dirs, files in os.walk(source_path):
                 for file in files:
                     filename = os.path.join(path, file)
                     relpath = os.path.relpath(filename, path)
