@@ -30,12 +30,12 @@ def receive_folder(sock, local_path):
             break
 
 
-def send_folder(path, receiver):
+def send_folder(source_path, receiver):
     with receiver:
-        for path, dirs, files in os.walk(path):
+        for path, dirs, files in os.walk(source_path):
             for file in files:
                 filename = os.path.join(path, file)
-                relpath = os.path.relpath(filename, path)
+                relpath = os.path.relpath(filename, source_path)
                 filesize = os.path.getsize(filename)
 
                 with open(filename, 'rb') as f:
