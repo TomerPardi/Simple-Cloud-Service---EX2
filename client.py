@@ -15,10 +15,11 @@ class Client:
 
     def handle_new_pc(self, ID):
         self.__sock.send(ID)
-        string = ""
+        string = b""
         while string != b"got id":
             string += self.__sock.recv(64)
-        self.__sock.send(bytes(self.__sock.getsockname()))
+        socket_name = str(self.__sock.getsockname()[0]) + "-" + str(self.__sock.getsockname()[1])  # "ip-port"
+        self.__sock.send(str.encode(socket_name))
         string = ""
         while string != b"got socket name":
             string += self.__sock.recv(64)
@@ -38,9 +39,12 @@ class Client:
         while string != b"got socket name":
             string += self.__sock.recv(64)
 
+
         while len(self.__id) < 128:
             self.__id += self.__sock.recv(64).decode()
+        # Utils.send_folder(self.__path, self.__sock)
         Utils.send_folder(self.__path, self.__sock)
+
 
     def start(self):
         try:
