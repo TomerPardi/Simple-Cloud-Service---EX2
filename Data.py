@@ -1,6 +1,7 @@
 import random
 import string
 
+import Utils
 from IDs import IDs
 import os
 
@@ -82,11 +83,11 @@ class Data:
         # TODO: identify each pc by its socket
         id_dict[sub_id] = set() # this dictionary will hold for each key set of updates.
         # send the ID folder to new pc we just registered
-        self.send_folder(self.__paths[id], client)
+        #self.send_folder(self.__paths[id], client)
 
     # function that call send folder function
     def send_folder_to_new_pc(self, id, client):
-        self.send_folder(self.__paths[id], client)
+        Utils.send_folder(self.__paths[id], client)
 
     # function that sends folder to receiver TODO: we have the same function at Utils - check it
     def send_folder(self, source_path, client):
@@ -94,7 +95,7 @@ class Data:
             for path, dirs, files in os.walk(source_path):
                 for file in files:
                     filename = os.path.join(path, file)
-                    relpath = os.path.relpath(filename, path)
+                    relpath = os.path.relpath(filename, source_path)
                     filesize = os.path.getsize(filename)
 
                     with open(filename, 'rb') as f:

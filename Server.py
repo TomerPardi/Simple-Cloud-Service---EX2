@@ -1,3 +1,5 @@
+import time
+
 from Data import Data
 from socket import *
 
@@ -29,23 +31,21 @@ class Server:
         while len(id) < 128 and id != "no_id":
             id += client.recv(64).decode()
         client.send(b"got id")
-        # TODO: need to change to identify each pc by socket and not personal path
-        # personal_path = self.__sock.recv(512)
-        # self.__sock.send(b"got personal path")
-        # self.id_manager(id, personal_path, client)
-        # socket_name = client.recv(128).decode()
-        # client.send(b"got socket name")
-        # self.id_manager(id, socket_name, client)
-
-        sub_id = client.recv(16).decode()
-        client.send(b"got sub id")
-        if sub_id == "":
+        sub_id = client.recv(16)
+        #client.send(b"got sub id")
+        if sub_id == b"null sub id":
             # give sub_id in chronological order
             sub_id = str(self.__data.identifies.get_size_of_sub_ids_dict(id) + 1)
             client.send(str.encode(sub_id))
+            string = b""
+            while string != b"got sub id":
+                string += client.recv(2)
+
         self.id_manager(id, sub_id, client)
+
 
 if __name__ == '__main__':
     server = Server()
-    server.accept()
-    print("end main") # for debugging
+    while(True):
+        server.accept()
+        print("end...") # for debugging
