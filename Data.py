@@ -22,9 +22,9 @@ class Data:
         os.mkdir(self.__mypath) # make the directory
 
     # this function is for getting data from new computer that connects with known ID
-    def receive_folder(self, id, socket_name, client):
+    def receive_folder(self, id, sub_id, client):
         # an function to add new pc under known ID
-        self.identifies.add_pc(id, socket_name)
+        self.identifies.add_pc(id, sub_id)
         # the process that copies the files from new pc to IDs folder in server side
         with client, client.makefile('rb') as clientfile:
             while True:
@@ -77,10 +77,10 @@ class Data:
 
     # this function is for saving for each ID the computers that connects under this ID
     # we want to identify each computer by its path TODO: change it to identify by socket
-    def add_pc(self, id, socket_name, client):
+    def add_pc(self, id, sub_id, client):
         id_dict = self.identifies.get_id_value(id)
         # TODO: identify each pc by its socket
-        id_dict[socket_name] = set() # this dictionary will hold for each key set of updates.
+        id_dict[sub_id] = set() # this dictionary will hold for each key set of updates.
         # send the ID folder to new pc we just registered
         self.send_folder(self.__paths[id], client)
 
