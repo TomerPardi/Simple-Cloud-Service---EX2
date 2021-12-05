@@ -3,6 +3,15 @@ import os
 chunk_size = 1_000_000
 
 
+def send_file(sock, filename):
+    f = open(filename, 'rb')
+    l = f.read(1024)
+    while (l):
+        sock.send(l)
+        l = f.read(1024)
+    f.close()
+
+
 def receive_folder(sock, local_path):
     with sock, sock.makefile('rb') as clientfile:
         while True:

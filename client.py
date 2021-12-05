@@ -1,3 +1,4 @@
+import os.path
 import socket
 import sys
 
@@ -63,17 +64,46 @@ class Client:
         self.__sock.close()
         self.start_observe()
 
-    def on_created(event):
-        print(f"hey, {event.src_path} has been created!")
+    def on_any_event(self, event):
+        rel_path = os.path.relpath(event.src_path, self.__path)
+        is_dir = str(os.path.isdir(event.src_path))
+        self.handle_event(event, event.event_type, rel_path, is_dir)
 
-    def on_deleted(event):
-        print(f"what the f**k! Someone deleted {event.src_path}!")
-
-    def on_modified(event):
-        print(f"hey buddy, {event.src_path} has been modified")
-
-    def on_moved(event):
-        print(f"ok ok ok, someone moved {event.src_path} to {event.dest_path}")
+    def handle_event(self, event, event_type, rel_path, is_dir):
+        if event_type == "created":
+            if is_dir == "true":
+                update_msg = "created_dir" + ',' + rel_path + ',' + is_dir + "," + self.__id + "," + self.__sub_id
+                self.__sock.send(update_msg.encode())
+            else:
+                update_msg = "created_file" + ',' + rel_path + ',' + is_dir + "," + self.__id + "," + self.__sub_id
+                self.__sock.send(update_msg.encode())
+                Utils.send_file(self.__sock, event.src_path)
+        if event_type == "deleted":
+            # here we want send to the server a message that the file/folder
+            # in relpath was deleted. if is_directory - it's folder; else - a file.
+            update_msg = "deleted" + ',' + rel_path + ',' + is_dir + "," + self.__id + "," + self.__sub_id
+            # example - "deleted,/folder/text.txt,false,83h4f945j4f,2
+            self.__sock.send(update_msg.encode())
+        if event_type == "moved":
+            # happens only when we rename file/folder
+            # first delete file/folder
+            update_msg = "deleted" + ',' + rel_path + ',' + is_dir + "," + self.__id + "," + self.__sub_id
+            self.__sock.send(update_msg.encode())
+            # now create the file/folder
+            new_path = os.path.relpath(event.dest_path, self.__path)
+            if is_dir == "true":
+                update_msg = "created_dir" + ',' + new_path + ',' + is_dir + "," + self.__id + "," + self.__sub_id
+                self.__sock.send(update_msg.encode())
+            else:
+                update_msg = "created_file" + ',' + new_path + ',' + is_dir + "," + self.__id + "," + self.__sub_id
+                self.__sock.send(update_msg.encode())
+                Utils.send_file(self.__sock, event.dest_path)
+        if event_type == "modified":
+            if is_dir == "false":
+                # just like creation of file
+                update_msg = "created_file" + ',' + rel_path + ',' + is_dir + "," + self.__id + "," + self.__sub_id
+                self.__sock.send(update_msg.encode())
+                Utils.send_file(self.__sock, event.src_path)
 
     def start_observe(self):
         patterns = ["*"]
@@ -84,20 +114,24 @@ class Client:
         my_observer = Observer()
 
         my_event_handler = PatternMatchingEventHandler(patterns, ignore_patterns, ignore_directories, case_sensitive)
-        my_event_handler.on_created = self.on_created
-        my_event_handler.on_deleted = self.on_deleted
-        my_event_handler.on_modified = self.on_modified
-        my_event_handler.on_moved = self.on_moved
+        my_event_handler.on_any_event = self.on_any_event
         my_observer.schedule(my_event_handler, self.__path, recursive=go_recursively)
         my_observer.start()
         try:
             while True:
                 time.sleep(int(self.__time))
                 # here we need handle update from server/ pull info from server
+                self.__sock.connect((self.__ip_address, self.__server_port))
+                self.update() # TODO - implement this function
+                self.__sock.close()
         except KeyboardInterrupt:
             my_observer.stop()
             my_observer.join()
         my_observer.stop()
+
+    def update(self):
+        # TODO - this function is for pulling the data from server
+        pass
 
 
 if __name__ == '__main__':
