@@ -28,10 +28,6 @@ class Client:
             string += self.__sock.recv(64)
 
         self.__sock.send(b"null sub id")
-        #string = b""
-        #while string != b"got sub id":
-        #    string += self.__sock.recv(128)
-
         self.__sub_id = self.__sock.recv(16).decode()  # receive sub id generated in server
         self.__sock.send(b"got sub id")
         Utils.receive_folder(self.__sock, self.__path)
@@ -54,20 +50,12 @@ class Client:
 
         Utils.send_folder(self.__path, self.__sock)
 
-    def start(self):
-        if len(sys.argv) == 6:
-            self.__id = sys.argv[5]
-            self.handle_new_pc(self.__id)
-        else: self.handle_new_client()
-
-        print(self.__id)
-        self.__sock.close()
-        self.start_observe()
-
     def on_any_event(self, event):
+        self.__sock.connect((self.__ip_address, self.__server_port))
         rel_path = os.path.relpath(event.src_path, self.__path)
         is_dir = str(os.path.isdir(event.src_path))
         self.handle_event(event, event.event_type, rel_path, is_dir)
+        self.__sock.close()
 
     def handle_event(self, event, event_type, rel_path, is_dir):
         if event_type == "created":
@@ -132,6 +120,16 @@ class Client:
     def update(self):
         # TODO - this function is for pulling the data from server
         pass
+
+    def start(self):
+        if len(sys.argv) == 6:
+            self.__id = sys.argv[5]
+            self.handle_new_pc(self.__id)
+        else: self.handle_new_client()
+
+        print(self.__id)
+        self.__sock.close()
+        self.start_observe()
 
 
 if __name__ == '__main__':
