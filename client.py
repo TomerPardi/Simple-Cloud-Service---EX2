@@ -1,6 +1,12 @@
 import socket
 import sys
+
+import watchdog
+
 import Utils
+import time
+from watchdog.observers import Observer
+from watchdog.events import PatternMatchingEventHandler
 
 
 class Client:
@@ -55,6 +61,43 @@ class Client:
 
         print(self.__id)
         self.__sock.close()
+        self.start_observe()
+
+    def on_created(event):
+        print(f"hey, {event.src_path} has been created!")
+
+    def on_deleted(event):
+        print(f"what the f**k! Someone deleted {event.src_path}!")
+
+    def on_modified(event):
+        print(f"hey buddy, {event.src_path} has been modified")
+
+    def on_moved(event):
+        print(f"ok ok ok, someone moved {event.src_path} to {event.dest_path}")
+
+    def start_observe(self):
+        patterns = ["*"]
+        ignore_patterns = None
+        ignore_directories = False
+        case_sensitive = True
+        go_recursively = True
+        my_observer = Observer()
+
+        my_event_handler = PatternMatchingEventHandler(patterns, ignore_patterns, ignore_directories, case_sensitive)
+        my_event_handler.on_created = self.on_created
+        my_event_handler.on_deleted = self.on_deleted
+        my_event_handler.on_modified = self.on_modified
+        my_event_handler.on_moved = self.on_moved
+        my_observer.schedule(my_event_handler, self.__path, recursive=go_recursively)
+        my_observer.start()
+        try:
+            while True:
+                time.sleep(int(self.__time))
+                # here we need handle update from server/ pull info from server
+        except KeyboardInterrupt:
+            my_observer.stop()
+            my_observer.join()
+        my_observer.stop()
 
 
 if __name__ == '__main__':
