@@ -27,25 +27,38 @@ class Server:
     # accept clients and handle first connection
     def accept(self):
         client, address = self.__sock.accept()
-        id = ""
-        while len(id) < 128 and id != "no_id":
-            id += client.recv(64).decode()
-        client.send(b"got id")
-        sub_id = client.recv(16)
-        #client.send(b"got sub id")
-        if sub_id == b"null sub id":
-            # give sub_id in chronological order
-            sub_id = str(self.__data.identifies.get_size_of_sub_ids_dict(id) + 1)
-            client.send(str.encode(sub_id))
-            string = b""
-            while string != b"got sub id":
-                string += client.recv(2)
+        message = client.recv(1024)
+        if message == b"new_connection":
+            id = ""
+            while len(id) < 128 and id != "no_id":
+                id += client.recv(64).decode()
+            client.send(b"got id")
+            sub_id = client.recv(16)
+            if sub_id == b"null sub id":
+                # give sub_id in chronological order
+                sub_id = str(self.__data.identifies.get_size_of_sub_ids_dict(id) + 1)
+                client.send(str.encode(sub_id))
+                string = b""
+                while string != b"got sub id":
+                    string += client.recv(2)
 
-        self.id_manager(id, sub_id, client)
+            self.id_manager(id, sub_id, client)
+        else:
+            # the connection is already set, the message is complex
+            message = message.decode()
+            command = message.split(",")[0] # get the command
+            if command == "created_dir":
+                pass # here we need to handle folder creation alert from client
+            if command == "created_file":
+                pass # here we need to handle file creation alert from client - receive data from socket
+            if command == "deleted":
+                pass # handle deletion
+            if command == "update":
+                pass # send client all the updates from the dict.
 
 
 if __name__ == '__main__':
     server = Server()
     while(True):
         server.accept()
-        print("end...") # for debugging
+        print("end...") # for debugging, remove it later

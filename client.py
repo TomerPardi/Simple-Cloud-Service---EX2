@@ -119,9 +119,13 @@ class Client:
 
     def update(self):
         # TODO - this function is for pulling the data from server
+        message = "update" + "," + self.__id + "," + self.__sub_id
+        self.__sock.send(message.encode())
+        # from now on receive data from server
         pass
 
     def start(self):
+        self.__sock.send(b"new_connection")
         if len(sys.argv) == 6:
             self.__id = sys.argv[5]
             self.handle_new_pc(self.__id)
