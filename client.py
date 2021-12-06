@@ -126,10 +126,10 @@ class Client:
     def update(self):
         # TODO - this function is for pulling the data from server
         message = "update" + "," + self.__id + "," + self.__sub_id
+        self.__sock.send(message.encode())
         string = self.__sock.recv(1024)
         while string != b"got_message":
             string += self.__sock.recv(64)
-        self.__sock.send(message.encode())
         # from now on receive data from server
         pass
 
