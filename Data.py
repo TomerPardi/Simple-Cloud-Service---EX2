@@ -8,19 +8,20 @@ import os
 # this variable is for sending folder
 chunk_size = 1_000_000
 
+
 # class that holds all data dictionary for server side.
 class Data:
     # constructor, we are declaring dictionary for IDs, for each ID we have more dictionary for each pc that connects
     def __init__(self, sock):
-        self.__paths = dict() # dict to map between ID and its path in server's side
-        self.__sock = sock # server's socket
-        self.identifies = IDs() # ID dict
-        directory_path = os.getcwd() # get current main's path (current folder)
+        self.__paths = dict()  # dict to map between ID and its path in server's side
+        self.__sock = sock  # server's socket
+        self.identifies = IDs()  # ID dict
+        directory_path = os.getcwd()  # get current main's path (current folder)
         # Directory
         directory = "ServerData"
         # Path
-        self.__mypath = os.path.join(directory_path, directory) # generate path name
-        os.mkdir(self.__mypath) # make the directory
+        self.__mypath = os.path.join(directory_path, directory)  # generate path name
+        os.mkdir(self.__mypath)  # make the directory
 
     # this function is for getting data from new computer that connects with known ID
     def receive_folder(self, id, sub_id, client):
@@ -76,14 +77,22 @@ class Data:
         self.__paths[id] = path
         return id
 
+    # TODO: make a signal that the directory is added and other users need to download it
+    def create_folder(self, rel_path, client_id, sub_id):
+        os.makedirs(os.path.dirname(os.path.join(self.__mypath, rel_path)), exist_ok=True)
+
+    # TODO: make a signal that the file is added and other users need to download it
+    def create_file(self, rel_path, client_id, sub_id):
+        open(os.path.join(self.__mypath, rel_path))
+
     # this function is for saving for each ID the computers that connects under this ID
     # we want to identify each computer by its path TODO: change it to identify by socket
     def add_pc(self, id, sub_id, client):
         id_dict = self.identifies.get_id_value(id)
         # TODO: identify each pc by its socket
-        id_dict[sub_id] = set() # this dictionary will hold for each key set of updates.
+        id_dict[sub_id] = set()  # this dictionary will hold for each key set of updates.
         # send the ID folder to new pc we just registered
-        #self.send_folder(self.__paths[id], client)
+        # self.send_folder(self.__paths[id], client)
 
     # function that call send folder function
     def send_folder_to_new_pc(self, id, client):
