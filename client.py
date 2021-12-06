@@ -41,9 +41,6 @@ class Client:
             string += self.__sock.recv(64)
 
         self.__sock.send(b"1")
-        #string = b""
-        #while string != b"got sub id":
-        #    string += self.__sock.recv(64)
 
         while len(self.__id) < 128:
             self.__id += self.__sock.recv(128).decode()
