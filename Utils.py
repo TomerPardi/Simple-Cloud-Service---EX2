@@ -3,15 +3,18 @@ import os
 chunk_size = 1_000_000
 
 
-def send_file(sock, filename):
-    f = open(filename, 'rb')
-    l = f.read(1024)
-    while (l):
-        sock.send(l)
-        l = f.read(1024)
-    f.close()
+def send_file(sock, relpath, filepath):
+    filesize = os.path.getsize(filepath)
+    with open(filepath, 'rb') as f:
+        sock.sendall(relpath.encode() + b'\n')
+        sock.sendall(str(filesize).encode() + b'\n')
+        # Send the file in chunks so large files can be handled.
+        while True:
+            data = f.read(chunk_size)
+            if not data: break
+            sock.sendall(data)
 
-
+# TODO: look like this function can handle receiving file also. if yes, we need to give it client's path in server.
 def receive_folder(sock, local_path):
     with sock, sock.makefile('rb') as clientfile:
         while True:

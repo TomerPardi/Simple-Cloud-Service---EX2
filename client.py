@@ -47,6 +47,28 @@ class Client:
 
         Utils.send_folder(self.__path, self.__sock)
 
+    def handle_created_dir(self, rel_path, is_dir):
+        update_msg = "created_dir" + ',' + rel_path + ',' + is_dir + "," + self.__id + "," + self.__sub_id
+        self.__sock.send(update_msg.encode())
+        string = self.__sock.recv(1024)
+        while string != b"got_message":
+            string += self.__sock.recv(64)
+
+    def handle_created_file(self, rel_path, is_dir, event):
+        update_msg = "created_file" + ',' + rel_path + ',' + is_dir + "," + self.__id + "," + self.__sub_id
+        self.__sock.send(update_msg.encode())
+        string = self.__sock.recv(1024)
+        while string != b"got_message":
+            string += self.__sock.recv(64)
+        Utils.send_file(self.__sock, rel_path, event.src_path)
+
+    def handle_deleted(self, rel_path, is_dir):
+        update_msg = "deleted" + ',' + rel_path + ',' + is_dir + "," + self.__id + "," + self.__sub_id
+        self.__sock.send(update_msg.encode())
+        string = self.__sock.recv(1024)
+        while string != b"got_message":
+            string += self.__sock.recv(64)
+
     def on_any_event(self, event):
         self.__sock.connect((self.__ip_address, self.__server_port))
         rel_path = os.path.relpath(event.src_path, self.__path)
@@ -57,38 +79,25 @@ class Client:
     def handle_event(self, event, event_type, rel_path, is_dir):
         if event_type == "created":
             if is_dir == "true":
-                update_msg = "created_dir" + ',' + rel_path + ',' + is_dir + "," + self.__id + "," + self.__sub_id
-                self.__sock.send(update_msg.encode())
+                self.handle_created_dir(rel_path, is_dir)
             else:
-                update_msg = "created_file" + ',' + rel_path + ',' + is_dir + "," + self.__id + "," + self.__sub_id
-                self.__sock.send(update_msg.encode())
-                Utils.send_file(self.__sock, event.src_path)
+                self.handle_created_file(rel_path, is_dir, event)
         if event_type == "deleted":
-            # here we want send to the server a message that the file/folder
-            # in relpath was deleted. if is_directory - it's folder; else - a file.
-            update_msg = "deleted" + ',' + rel_path + ',' + is_dir + "," + self.__id + "," + self.__sub_id
-            # example - "deleted,/folder/text.txt,false,83h4f945j4f,2
-            self.__sock.send(update_msg.encode())
+            self.handle_deleted(rel_path, is_dir)
         if event_type == "moved":
             # happens only when we rename file/folder
             # first delete file/folder
-            update_msg = "deleted" + ',' + rel_path + ',' + is_dir + "," + self.__id + "," + self.__sub_id
-            self.__sock.send(update_msg.encode())
+            self.handle_deleted(rel_path, is_dir)
             # now create the file/folder
             new_path = os.path.relpath(event.dest_path, self.__path)
             if is_dir == "true":
-                update_msg = "created_dir" + ',' + new_path + ',' + is_dir + "," + self.__id + "," + self.__sub_id
-                self.__sock.send(update_msg.encode())
+                self.handle_created_dir(new_path, is_dir)
             else:
-                update_msg = "created_file" + ',' + new_path + ',' + is_dir + "," + self.__id + "," + self.__sub_id
-                self.__sock.send(update_msg.encode())
-                Utils.send_file(self.__sock, event.dest_path)
+                self.handle_created_file(new_path, is_dir, event)
         if event_type == "modified":
             if is_dir == "false":
                 # just like creation of file
-                update_msg = "created_file" + ',' + rel_path + ',' + is_dir + "," + self.__id + "," + self.__sub_id
-                self.__sock.send(update_msg.encode())
-                Utils.send_file(self.__sock, event.src_path)
+                self.handle_created_file(rel_path, is_dir, event)
 
     def start_observe(self):
         patterns = ["*"]
@@ -117,6 +126,9 @@ class Client:
     def update(self):
         # TODO - this function is for pulling the data from server
         message = "update" + "," + self.__id + "," + self.__sub_id
+        string = self.__sock.recv(1024)
+        while string != b"got_message":
+            string += self.__sock.recv(64)
         self.__sock.send(message.encode())
         # from now on receive data from server
         pass

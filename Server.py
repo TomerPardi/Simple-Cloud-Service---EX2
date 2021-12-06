@@ -28,6 +28,7 @@ class Server:
     def accept(self):
         client, address = self.__sock.accept()
         message = client.recv(1024)
+        client.send(b"got_message")
         if message == b"new_connection":
             id = ""
             while len(id) < 128 and id != "no_id":
