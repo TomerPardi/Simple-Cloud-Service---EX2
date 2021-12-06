@@ -83,7 +83,7 @@ class Data:
 
     # TODO: make a signal that the file is added and other users need to download it
     def create_file(self, rel_path, client_id, sub_id):
-        open(os.path.join(self.__mypath, rel_path))
+        open(os.path.join(self.__mypath,  rel_path))
 
     # this function is for saving for each ID the computers that connects under this ID
     # we want to identify each computer by its path TODO: change it to identify by socket

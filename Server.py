@@ -14,7 +14,7 @@ class Server:
         self.__sock.listen()  # be ready to get clients
 
     # handle new connections from server-client
-    def id_manager(self, id, sub_id, client):
+    def id_manager(self,  id, sub_id, client):
         # in case the client didn't specify id number
         if id == "no_id":
             id = self.__data.add_client()  # generate id

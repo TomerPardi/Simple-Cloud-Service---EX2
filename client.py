@@ -60,7 +60,7 @@ class Client:
         string = self.__sock.recv(1024)
         while string != b"got_message":
             string += self.__sock.recv(64)
-        Utils.send_file(self.__sock, rel_path, event.src_path)
+        Utils.send_file(self.__sock, rel_path,  event.src_path)
 
     def handle_deleted(self, rel_path, is_dir):
         update_msg = "deleted" + ',' + rel_path + ',' + is_dir + "," + self.__id + "," + self.__sub_id
