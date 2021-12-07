@@ -77,13 +77,37 @@ class Data:
         self.__paths[id] = path
         return id
 
-    # TODO: make a signal that the directory is added and other users need to download it
-    def create_folder(self, rel_path, client_id, sub_id):
-        os.makedirs(os.path.dirname(os.path.join(self.__mypath, rel_path)), exist_ok=True)
+    def update_computers(self, id, pc_id, command):
+        for sub_id in self.identifies.get_id_dict(id).keys():
+            if sub_id != pc_id:
+                self.identifies.get_sub_id_set(id, sub_id)[id].append(command)
 
-    # TODO: make a signal that the file is added and other users need to download it
-    def create_file(self, rel_path, client_id, sub_id):
-        open(os.path.join(self.__mypath,  rel_path))
+    def create_folder(self, rel_path, client_id, sub_id):
+        path = os.path.join(self.__paths[client_id], rel_path)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        command = "created_dir" + "," + "true" + "," + rel_path
+        self.update_computers(client_id, sub_id, command)
+
+    def create_file(self, rel_path, client_id, sub_id, client):
+        path = os.path.join(self.__paths[client_id], rel_path)
+        dir_name = os.path.dirname(path) # get the path without last component
+        Utils.receive_folder(client, dir_name)
+        command = "created_file" + "," + "false" + "," + rel_path
+        self.update_computers(client_id, sub_id, command)
+
+    def delete_file(self, rel_path, client_id, sub_id):
+        path = os.path.join(self.__paths[client_id], rel_path)
+        if os.path.exists(path):
+            os.remove(path)
+            command = "deleted_file" + "," + "false" + "," + rel_path
+            self.update_computers(client_id, sub_id, command)
+
+    def delete_folder(self, rel_path, client_id, sub_id):
+        path = os.path.join(self.__paths[client_id], rel_path)
+        Utils.delete_dir(path)
+        command = "deleted_folder" + "," + "true" + "," + rel_path
+        self.update_computers(client_id, sub_id, command)
+
 
     # this function is for saving for each ID the computers that connects under this ID
     # we want to identify each computer by its path TODO: change it to identify by socket
@@ -116,3 +140,21 @@ class Data:
                             data = f.read(chunk_size)
                             if not data: break
                             client.sendall(data)
+
+    def update_client(self, client_id, sub_id, client):
+        if self.identifies.get_size_of_sub_id_set(client_id, sub_id) == 0:
+            client.sendall(b"no_updates")
+        else:
+            for command in self.identifies.get_sub_id_set(client_id, sub_id):
+                client.sendall(command.encode())
+                string = client.recv(1024)
+                while string != b"got_message":
+                    string += self.__sock.recv(64)
+                # in case of our logic we now need to send file
+                command = command.split(",")
+                if command[0] == "created_file":
+                    rel_path = command[2]
+                    src_path = os.path.join(self.__paths[id], rel_path)
+                    Utils.send_file(client, rel_path, src_path)
+        # now we want to clear the set - after update done
+        self.identifies.get_sub_id_set(client_id, sub_id).clear()

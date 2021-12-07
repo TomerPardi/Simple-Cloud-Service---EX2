@@ -27,14 +27,17 @@ class Server:
     def handle_dir_create(self, rel_path, is_dir, client_id, sub_id):
         self.__data.create_folder(rel_path, client_id, sub_id)
 
-    def handle_file_create(self, rel_path, is_dir, client_id, sub_id):
-        self.__data.create_file(rel_path, client_id, sub_id)
+    def handle_file_create(self, rel_path, is_dir, client_id, sub_id, client):
+        self.__data.create_file(rel_path, client_id, sub_id, client)
 
     def handle_deleted(self, rel_path, is_dir, client_id, sub_id):
-        pass
+        if is_dir == "true":
+            self.__data.delete_folder(rel_path, client_id, sub_id)
+        else:
+            self.__data.delete_file(rel_path, client_id, sub_id)
 
-    def handle_update(self, rel_path, is_dir, client_id, sub_id):
-        pass
+    def handle_update(self, client_id, sub_id, client):
+        self.__data.update_client(client_id, sub_id, client)
 
     # accept clients and handle first connection
     def accept(self):
@@ -69,11 +72,11 @@ class Server:
             if command == "created_dir":
                 self.handle_dir_create(rel_path, is_dir, client_id, sub_id)
             if command == "created_file":
-                self.handle_file_create(rel_path, is_dir, client_id, sub_id)
+                self.handle_file_create(rel_path, is_dir, client_id, sub_id, client)
             if command == "deleted":
                 self.handle_deleted(rel_path, is_dir, client_id, sub_id)
             if command == "update":
-                self.handle_update(rel_path, is_dir, client_id, sub_id)
+                self.handle_update(client_id, sub_id, client)
 
 
 if __name__ == '__main__':

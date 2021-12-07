@@ -78,26 +78,36 @@ class Client:
 
     def handle_event(self, event, event_type, rel_path, is_dir):
         if event_type == "created":
+            if rel_path.split(".")[-1] == "swp" or "goutputstream" in rel_path:
+                return
             if is_dir == "true":
                 self.handle_created_dir(rel_path, is_dir)
             else:
                 self.handle_created_file(rel_path, is_dir, event)
         if event_type == "deleted":
+            if rel_path.split(".")[-1] == "swp":
+                return
             self.handle_deleted(rel_path, is_dir)
         if event_type == "moved":
+            new_path = os.path.relpath(event.dest_path, self.__path)
+            # modify file
+            if "goutputstream" in event.src_path:
+                self.handle_deleted(new_path, is_dir)
+                self.handle_created_file(new_path, is_dir, event)
+                return
             # happens only when we rename file/folder
             # first delete file/folder
             self.handle_deleted(rel_path, is_dir)
             # now create the file/folder
-            new_path = os.path.relpath(event.dest_path, self.__path)
+
             if is_dir == "true":
                 self.handle_created_dir(new_path, is_dir)
             else:
                 self.handle_created_file(new_path, is_dir, event)
-        if event_type == "modified":
-            if is_dir == "false":
-                # just like creation of file
-                self.handle_created_file(rel_path, is_dir, event)
+        # if event_type == "modified":
+        #     if is_dir == "false":
+        #         # just like creation of file
+        #         self.handle_created_file(rel_path, is_dir, event)
 
     def start_observe(self):
         patterns = ["*"]
@@ -125,13 +135,35 @@ class Client:
 
     def update(self):
         # TODO - this function is for pulling the data from server
-        message = "update" + "," + self.__id + "," + self.__sub_id
+        message = "update" + "," + "null" + "," + "null" + "," + self.__id + "," + self.__sub_id
         self.__sock.send(message.encode())
         string = self.__sock.recv(1024)
         while string != b"got_message":
             string += self.__sock.recv(64)
         # from now on receive data from server
-        pass
+        message = self.__sock.recv(64)
+        if message == b"no_updates":
+            return
+        self.__sock.sendall(b"got_message")
+        message = message.decode().split(",")
+        command = message[0]
+        is_dir = message[1]
+        rel_path = message[2]
+        if command == "deleted_file":
+            path = os.path.join(self.__path, rel_path)
+            if os.path.exists(path):
+                os.remove(path)
+        elif command == "deleted_folder":
+            path = os.path.join(self.__path, rel_path)
+            Utils.delete_dir(path)
+        elif command == "created_dir":
+            path = os.path.join(self.__path, rel_path)
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+        elif command == "created_file":
+            path = os.path.join(self.__path, rel_path)
+            dir_name = os.path.dirname(path)  # get the path without last component
+            Utils.receive_folder(self.__sock, dir_name)
+
 
     def start(self):
         self.__sock.send(b"new_connection")

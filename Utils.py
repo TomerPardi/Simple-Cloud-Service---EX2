@@ -59,3 +59,16 @@ def send_folder(source_path, receiver):
                         data = f.read(chunk_size)
                         if not data: break
                         receiver.sendall(data)
+
+
+def delete_dir(path):
+    if not os.path.exists(path):
+        return
+    for root, dirs, files in os.walk(path, topdown=False):
+        for file in files:
+            file_path = os.path.join(root, file)
+            os.remove(file_path)
+        for dir in dirs:
+            dir_path = os.path.join(root, dir)
+            os.rmdir(dir_path)
+    os.rmdir(path)
