@@ -10,6 +10,7 @@ from watchdog.observers import Observer
 from watchdog.events import PatternMatchingEventHandler
 
 
+
 class Client:
     def __init__(self):
         self.__ip_address = sys.argv[1]
@@ -20,6 +21,7 @@ class Client:
         self.__sub_id = ""
         self.__sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.__sock.connect((self.__ip_address, self.__server_port))
+        self.LAST_UPDATE_MADE = ""
 
     def handle_new_pc(self, ID):
         self.__sock.send(str.encode(ID))
@@ -70,6 +72,8 @@ class Client:
             string += self.__sock.recv(64)
 
     def on_any_event(self, event):
+        if event.src_path == self.LAST_UPDATE_MADE:
+            return # the event was an update from server, ignore it
         self.__sock.connect((self.__ip_address, self.__server_port))
         rel_path = os.path.relpath(event.src_path, self.__path)
         is_dir = str(os.path.isdir(event.src_path))
@@ -153,16 +157,20 @@ class Client:
             path = os.path.join(self.__path, rel_path)
             if os.path.exists(path):
                 os.remove(path)
+            self.__LAST_UPDATE_MADE = path
+        # TODO think of better way to handle this situation (import client in Utils)
         elif command == "deleted_folder":
             path = os.path.join(self.__path, rel_path)
             Utils.delete_dir(path)
         elif command == "created_dir":
             path = os.path.join(self.__path, rel_path)
             os.makedirs(os.path.dirname(path), exist_ok=True)
+            self.__LAST_UPDATE_MADE = path
         elif command == "created_file":
             path = os.path.join(self.__path, rel_path)
             dir_name = os.path.dirname(path)  # get the path without last component
             Utils.receive_folder(self.__sock, dir_name)
+            self.__LAST_UPDATE_MADE = path
 
 
     def start(self):

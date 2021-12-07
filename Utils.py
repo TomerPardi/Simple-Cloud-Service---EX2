@@ -1,4 +1,5 @@
 import os
+import client
 
 chunk_size = 1_000_000
 
@@ -68,7 +69,10 @@ def delete_dir(path):
         for file in files:
             file_path = os.path.join(root, file)
             os.remove(file_path)
+            client.client.LAST_UPDATE_MADE = file_path
         for dir in dirs:
             dir_path = os.path.join(root, dir)
             os.rmdir(dir_path)
+            client.client.LAST_UPDATE_MADE = dir_path
     os.rmdir(path)
+    client.client.LAST_UPDATE_MADE = path
