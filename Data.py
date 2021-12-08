@@ -13,7 +13,7 @@ chunk_size = 1_000_000
 class Data:
     # constructor, we are declaring dictionary for IDs, for each ID we have more dictionary for each pc that connects
     def __init__(self, sock):
-        self.__paths = dict()  # dict to map between ID and its path in server's side
+        self.paths = dict()  # dict to map between ID and its path in server's side
         self.__sock = sock  # server's socket
         self.identifies = IDs()  # ID dict
         directory_path = os.getcwd()  # get current main's path (current folder)
@@ -36,7 +36,7 @@ class Data:
                 filename = raw.strip().decode()
                 length = int(clientfile.readline())
 
-                path = os.path.join(self.__paths[id], filename)
+                path = os.path.join(self.paths[id], filename)
                 os.makedirs(os.path.dirname(path), exist_ok=True)
 
                 # Read the data in chunks so it can handle large files.
@@ -74,7 +74,7 @@ class Data:
         path = os.path.join(self.__mypath, id)
         os.mkdir(path)
         # add the path to map between id and path easily
-        self.__paths[id] = path
+        self.paths[id] = path
         return id
 
     def update_computers(self, id, pc_id, command):
@@ -83,27 +83,28 @@ class Data:
                 self.identifies.get_sub_id_set(id, sub_id)[id].append(command)
 
     def create_folder(self, rel_path, client_id, sub_id):
-        path = os.path.join(self.__paths[client_id], rel_path)
+        path = os.path.join(self.paths[client_id], rel_path)
         os.makedirs(path, exist_ok=True)
         command = "created_dir" + "," + "true" + "," + rel_path
         self.update_computers(client_id, sub_id, command)
 
     def create_file(self, rel_path, client_id, sub_id, client):
-        path = os.path.join(self.__paths[client_id], rel_path)
+        path = os.path.join(self.paths[client_id], rel_path)
         dir_name = os.path.dirname(path) # get the path without last component
-        Utils.receive_folder(client, dir_name)
+        print("here1")
+        Utils.receive_file(client, dir_name)
         command = "created_file" + "," + "false" + "," + rel_path
         self.update_computers(client_id, sub_id, command)
 
     def delete_file(self, rel_path, client_id, sub_id):
-        path = os.path.join(self.__paths[client_id], rel_path)
+        path = os.path.join(self.paths[client_id], rel_path)
         if os.path.exists(path):
             os.remove(path)
             command = "deleted_file" + "," + "false" + "," + rel_path
             self.update_computers(client_id, sub_id, command)
 
     def delete_folder(self, rel_path, client_id, sub_id):
-        path = os.path.join(self.__paths[client_id], rel_path)
+        path = os.path.join(self.paths[client_id], rel_path)
         self.delete_dir(path)
         command = "deleted_folder" + "," + "true" + "," + rel_path
         self.update_computers(client_id, sub_id, command)
@@ -115,7 +116,7 @@ class Data:
 
     # function that call send folder function
     def send_folder_to_new_pc(self, id, client):
-        Utils.send_folder(self.__paths[id], client)
+        Utils.send_folder(self.paths[id], client)
 
     # function that sends folder to receiver TODO: we have the same function at Utils - check it
     def send_folder(self, source_path, client):
@@ -149,7 +150,7 @@ class Data:
                 command = command.split(",")
                 if command[0] == "created_file":
                     rel_path = command[2]
-                    src_path = os.path.join(self.__paths[id], rel_path)
+                    src_path = os.path.join(self.paths[id], rel_path)
                     Utils.send_file(client, rel_path, src_path)
         # now we want to clear the set - after update done
         self.identifies.get_sub_id_set(client_id, sub_id).clear()

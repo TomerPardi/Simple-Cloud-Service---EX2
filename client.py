@@ -48,6 +48,7 @@ class Client:
                 self.LAST_UPDATE_MADE = dir_path
         os.rmdir(path)
         self.LAST_UPDATE_MADE = path
+
     # handle new client situation - while ID isn't exist
     def handle_new_client(self):
         self.__sub_id = "1"  # new client with new pc - give it sub ID by chronological order
@@ -63,22 +64,25 @@ class Client:
         update_msg = "created_dir" + ',' + rel_path + ',' + is_dir + "," + self.__id + "," + self.__sub_id
         self.__sock.sendall(update_msg.encode() + b"\n")
 
-
-    def handle_created_file(self, rel_path, is_dir, event):
+    def handle_created_file(self, rel_path, is_dir, event, flag):
         update_msg = "created_file" + ',' + rel_path + ',' + is_dir + "," + self.__id + "," + self.__sub_id
+        print(update_msg)
         self.__sock.sendall(update_msg.encode() + b"\n")
-
-        Utils.send_file(self.__sock, rel_path,  event.src_path)
+        print(rel_path)
+        if flag:
+            Utils.send_file(self.__sock, rel_path,  event.dest_path)
+        else:
+            Utils.send_file(self.__sock, rel_path, event.src_path)
 
     def handle_deleted(self, rel_path, is_dir):
         update_msg = "deleted" + ',' + rel_path + ',' + is_dir + "," + self.__id + "," + self.__sub_id
         print(update_msg)
         self.__sock.sendall(update_msg.encode() + b"\n")
 
-
     def on_any_event(self, event):
-        if event.event_type == "modified" or event.src_path.split(".")[-1] == "swp" \
-                or ("goutputstream" in event.src_path and event.event_type == "created"):
+        if event.event_type == "modified" or event.src_path.split(".")[-1] == "swp":
+            return
+        if "goutputstream" in event.src_path and event.event_type == "created":
             return
         if event.src_path == self.LAST_UPDATE_MADE:
             self.LAST_UPDATE_MADE = ""
@@ -87,7 +91,6 @@ class Client:
         self.__sock.connect((self.__ip_address, self.__server_port))
         rel_path = os.path.relpath(event.src_path, self.__path)
         is_dir = str(os.path.isdir(event.src_path))
-        print(is_dir)
         self.handle_event(event, event.event_type, rel_path, is_dir)
         self.__sock.close()
 
@@ -97,27 +100,40 @@ class Client:
                 self.handle_created_dir(rel_path, is_dir)
             else:
                 print("create file")
-                self.handle_created_file(rel_path, is_dir, event)
+                self.handle_created_file(rel_path, is_dir, event, 0)
 
         if event_type == "deleted":
+            print("deleted" + " " + is_dir)
             self.handle_deleted(rel_path, is_dir)
 
         if event_type == "moved":
             new_path = os.path.relpath(event.dest_path, self.__path)
             # modify file
             if "goutputstream" in event.src_path:
+                print("now here")
+                print(new_path)
                 self.handle_deleted(new_path, is_dir)
-                self.handle_created_file(new_path, is_dir, event)
+                print("handled deleted move on to create again")
+                self.__sock.close()
+                self.__sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self.__sock.connect((self.__ip_address, self.__server_port))
+                self.handle_created_file(new_path, is_dir, event, 1)
                 return
             # happens only when we rename file/folder
             # first delete file/folder
-            self.handle_deleted(rel_path, is_dir)
-            # now create the file/folder
+            is_dir = str(os.path.isdir(new_path))
+            self.handle_rename(rel_path, new_path, is_dir)
 
-            if is_dir == "True":
-                self.handle_created_dir(new_path, is_dir)
-            else:
-                self.handle_created_file(new_path, is_dir, event)
+            ##############################################
+            # self.handle_deleted(rel_path, is_dir)
+            # now create the file/folder
+            # self.__sock.close()
+            # self.__sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            # self.__sock.connect((self.__ip_address, self.__server_port))
+            # if is_dir == "True":
+            #     self.handle_created_dir(new_path, is_dir)
+            # else:
+            #     self.handle_created_file(new_path, is_dir, event, 1)
 
 
     def start_observe(self):
@@ -189,6 +205,12 @@ class Client:
         print(self.__id)
         self.__sock.close()
         self.start_observe()
+
+    def handle_rename(self, rel_path, new_path, is_dir):
+        update_msg = "renamed" + ',' + rel_path + ',' + is_dir + "," + self.__id + "," + self.__sub_id + "," + new_path
+        # print(update_msg)
+        self.__sock.sendall(update_msg.encode() + b"\n")
+        pass
 
 
 if __name__ == '__main__':

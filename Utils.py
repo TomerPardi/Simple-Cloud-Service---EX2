@@ -2,7 +2,6 @@ import os
 
 chunk_size = 1_000_000
 
-
 def send_file(sock, relpath, filepath):
     filesize = os.path.getsize(filepath)
     with open(filepath, 'rb') as f:
@@ -41,21 +40,34 @@ def receive_folder(sock, local_path):
             # socket was closed early.
             break
 
+# TODO: be aware its not like in data!!!!!!! its for receive files
+def receive_file(sock, local_path):
+    print("here2")
+    with sock, sock.makefile('rb') as clientfile:
+        sock.sendall(b"ready")
+        while True:
+            raw = clientfile.readline()
+            print(raw)
+            if not raw: break  # no more files, server closed connection.
 
-def send_folder(source_path, receiver):
-    with receiver:
-        for path, dirs, files in os.walk(source_path):
-            for file in files:
-                filename = os.path.join(path, file)
-                relpath = os.path.relpath(filename, source_path)
-                filesize = os.path.getsize(filename)
+            filename = raw.strip().decode()
+            print(filename)
+            length = int(clientfile.readline())
 
-                with open(filename, 'rb') as f:
-                    receiver.sendall(relpath.encode() + b'\n')
-                    receiver.sendall(str(filesize).encode() + b'\n')
+            filename = os.path.basename(filename)
+            path = os.path.join(local_path, filename)
+            os.makedirs(os.path.dirname(path), exist_ok=True)
 
-                    # Send the file in chunks so large files can be handled.
-                    while True:
-                        data = f.read(chunk_size)
-                        if not data: break
-                        receiver.sendall(data)
+            # Read the data in chunks so it can handle large files.
+            with open(path, 'wb') as f:
+                while length:
+                    chunk = min(length, chunk_size)
+                    data = clientfile.read(chunk)
+                    if not data: break
+                    f.write(data)
+                    length -= len(data)
+                else:  # only runs if while doesn't break and length==0
+                    continue
+
+            # socket was closed early.
+            break

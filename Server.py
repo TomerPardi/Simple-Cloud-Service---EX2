@@ -1,3 +1,4 @@
+import os.path
 import sys
 import time
 
@@ -33,7 +34,7 @@ class Server:
         self.__data.create_file(rel_path, client_id, sub_id, client)
 
     def handle_deleted(self, rel_path, is_dir, client_id, sub_id):
-        if is_dir == "true":
+        if is_dir:
             self.__data.delete_folder(rel_path, client_id, sub_id)
         else:
             self.__data.delete_file(rel_path, client_id, sub_id)
@@ -69,13 +70,27 @@ class Server:
                 if command == "created_file":
                     self.handle_file_create(rel_path, is_dir, client_id, sub_id, client)
                 if command == "deleted":
-                    self.handle_deleted(rel_path, is_dir, client_id, sub_id)
+                    path = os.path.join(self.__data.paths[client_id], rel_path)
+                    isdir = os.path.isdir(path)
+                    print(path)
+                    print(isdir)
+                    self.handle_deleted(rel_path, isdir, client_id, sub_id)
                 if command == "update":
                     self.handle_update(client_id, sub_id, client)
+
+                if command == "renamed":
+                    new_path = message_parts[5]
+                    self.handle_rename(rel_path, new_path, is_dir, client_id, sub_id)
+
+    def handle_rename(self, rel_path, new_path, is_dir, client_id, sub_id):
+        src_path = os.path.join(self.__data.paths[client_id], rel_path)
+        if os.path.exists(src_path):
+            dest_path = os.path.join(self.__data.paths[client_id], new_path)
+            os.rename(src_path, dest_path)
 
 
 if __name__ == '__main__':
     server = Server()
     while True:
         server.accept()
-        print("end...")  # for debugging, remove it later
+        # print("end...")  # for debugging, remove it later

@@ -14,9 +14,9 @@ class IDs:
         return len(self.__keys[id])
 
     def get_size_of_sub_id_set(self, id, sub_id):
-        print(id + " " + sub_id)
+        # print(id + " " + sub_id)
         set = self.__keys[id][sub_id]
-        print(len(set))
+        # print(len(set))
         return len(set)
 
     def get_id_dict(self, id):
