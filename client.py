@@ -8,7 +8,7 @@ import Utils
 import time
 from watchdog.observers import Observer
 from watchdog.events import PatternMatchingEventHandler
-
+DELIM = "###endofmessage###"
 
 
 class Client:
@@ -24,75 +24,84 @@ class Client:
         self.LAST_UPDATE_MADE = ""
 
     def handle_new_pc(self, ID):
-        self.__sock.send(str.encode(ID))
-        string = b""
-        while string != b"got id":
-            string += self.__sock.recv(64)
+        self.__sock.sendall(str.encode(ID) + b"\n")
+        # string = b""
+        # while string != b"got id":
+        #    string += self.__sock.recv(64)
 
-        self.__sock.send(b"null sub id")
-        self.__sub_id = self.__sock.recv(16).decode()  # receive sub id generated in server
-        self.__sock.send(b"got sub id")
+        self.__sock.sendall(b"null sub id" + b"\n")
+        with self.__sock, self.__sock.makefile('rb') as server_file:
+            self.__sub_id = server_file.readline().decode().strip()
         Utils.receive_folder(self.__sock, self.__path)
 
+    def delete_dir(self, path):
+        if not os.path.exists(path):
+            return
+        for root, dirs, files in os.walk(path, topdown=False):
+            for file in files:
+                file_path = os.path.join(root, file)
+                os.remove(file_path)
+                self.LAST_UPDATE_MADE = file_path
+            for dir in dirs:
+                dir_path = os.path.join(root, dir)
+                os.rmdir(dir_path)
+                self.LAST_UPDATE_MADE = dir_path
+        os.rmdir(path)
+        self.LAST_UPDATE_MADE = path
     # handle new client situation - while ID isn't exist
     def handle_new_client(self):
         self.__sub_id = "1"  # new client with new pc - give it sub ID by chronological order
-        self.__sock.send(b"no_id")
-        string = b""
-        while string != b"got id":
-            string += self.__sock.recv(64)
+        self.__sock.sendall(b"no_id" + b"\n")
 
-        self.__sock.send(b"1")
+        self.__sock.sendall(b"1" + b"\n")
+        with self.__sock, self.__sock.makefile('rb') as server_file:
+            self.__id = server_file.readline().decode().strip()
 
-        while len(self.__id) < 128:
-            self.__id += self.__sock.recv(128).decode()
-
-        Utils.send_folder(self.__path, self.__sock)
+            Utils.send_folder(self.__path, self.__sock)
 
     def handle_created_dir(self, rel_path, is_dir):
         update_msg = "created_dir" + ',' + rel_path + ',' + is_dir + "," + self.__id + "," + self.__sub_id
-        self.__sock.send(update_msg.encode())
-        string = self.__sock.recv(1024)
-        while string != b"got_message":
-            string += self.__sock.recv(64)
+        self.__sock.sendall(update_msg.encode() + b"\n")
+
 
     def handle_created_file(self, rel_path, is_dir, event):
         update_msg = "created_file" + ',' + rel_path + ',' + is_dir + "," + self.__id + "," + self.__sub_id
-        self.__sock.send(update_msg.encode())
-        string = self.__sock.recv(1024)
-        while string != b"got_message":
-            string += self.__sock.recv(64)
+        self.__sock.sendall(update_msg.encode() + b"\n")
+
         Utils.send_file(self.__sock, rel_path,  event.src_path)
 
     def handle_deleted(self, rel_path, is_dir):
         update_msg = "deleted" + ',' + rel_path + ',' + is_dir + "," + self.__id + "," + self.__sub_id
-        self.__sock.send(update_msg.encode())
-        string = self.__sock.recv(1024)
-        while string != b"got_message":
-            string += self.__sock.recv(64)
+        print(update_msg)
+        self.__sock.sendall(update_msg.encode() + b"\n")
+
 
     def on_any_event(self, event):
+        if event.event_type == "modified" or event.src_path.split(".")[-1] == "swp" \
+                or ("goutputstream" in event.src_path and event.event_type == "created"):
+            return
         if event.src_path == self.LAST_UPDATE_MADE:
             self.LAST_UPDATE_MADE = ""
             return # the event was an update from server, ignore it
+        self.__sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.__sock.connect((self.__ip_address, self.__server_port))
         rel_path = os.path.relpath(event.src_path, self.__path)
         is_dir = str(os.path.isdir(event.src_path))
+        print(is_dir)
         self.handle_event(event, event.event_type, rel_path, is_dir)
         self.__sock.close()
 
     def handle_event(self, event, event_type, rel_path, is_dir):
         if event_type == "created":
-            if rel_path.split(".")[-1] == "swp" or "goutputstream" in rel_path:
-                return
-            if is_dir == "true":
+            if is_dir == "True":
                 self.handle_created_dir(rel_path, is_dir)
             else:
+                print("create file")
                 self.handle_created_file(rel_path, is_dir, event)
+
         if event_type == "deleted":
-            if rel_path.split(".")[-1] == "swp":
-                return
             self.handle_deleted(rel_path, is_dir)
+
         if event_type == "moved":
             new_path = os.path.relpath(event.dest_path, self.__path)
             # modify file
@@ -105,14 +114,11 @@ class Client:
             self.handle_deleted(rel_path, is_dir)
             # now create the file/folder
 
-            if is_dir == "true":
+            if is_dir == "True":
                 self.handle_created_dir(new_path, is_dir)
             else:
                 self.handle_created_file(new_path, is_dir, event)
-        # if event_type == "modified":
-        #     if is_dir == "false":
-        #         # just like creation of file
-        #         self.handle_created_file(rel_path, is_dir, event)
+
 
     def start_observe(self):
         patterns = ["*"]
@@ -130,6 +136,7 @@ class Client:
             while True:
                 time.sleep(int(self.__time))
                 # here we need handle update from server/ pull info from server
+                self.__sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 self.__sock.connect((self.__ip_address, self.__server_port))
                 self.update() # TODO - implement this function
                 self.__sock.close()
@@ -141,16 +148,14 @@ class Client:
     def update(self):
         # TODO - this function is for pulling the data from server
         message = "update" + "," + "null" + "," + "null" + "," + self.__id + "," + self.__sub_id
-        self.__sock.send(message.encode())
-        string = self.__sock.recv(1024)
-        while string != b"got_message":
-            string += self.__sock.recv(64)
+        self.__sock.sendall(message.encode() + b"\n")
+
         # from now on receive data from server
-        message = self.__sock.recv(64)
-        if message == b"no_updates":
+        with self.__sock, self.__sock.makefile('rb') as server_file:
+            message = server_file.readline().decode().strip()
+        if message == "no_updates":
             return
-        self.__sock.sendall(b"got_message")
-        message = message.decode().split(",")
+        message = message.split(",")
         command = message[0]
         is_dir = message[1]
         rel_path = message[2]
@@ -162,7 +167,7 @@ class Client:
         # TODO think of better way to handle this situation (import client in Utils)
         elif command == "deleted_folder":
             path = os.path.join(self.__path, rel_path)
-            Utils.delete_dir(path)
+            self.delete_dir(path)
         elif command == "created_dir":
             path = os.path.join(self.__path, rel_path)
             os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -175,7 +180,7 @@ class Client:
 
 
     def start(self):
-        self.__sock.send(b"new_connection")
+        self.__sock.sendall(b"new_connection" + b"\n")
         if len(sys.argv) == 6:
             self.__id = sys.argv[5]
             self.handle_new_pc(self.__id)

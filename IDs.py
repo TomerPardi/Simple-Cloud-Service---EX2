@@ -14,7 +14,10 @@ class IDs:
         return len(self.__keys[id])
 
     def get_size_of_sub_id_set(self, id, sub_id):
-        return len(self.__keys[id][sub_id])
+        print(id + " " + sub_id)
+        set = self.__keys[id][sub_id]
+        print(len(set))
+        return len(set)
 
     def get_id_dict(self, id):
         return self.__keys[id]
@@ -24,6 +27,6 @@ class IDs:
 
     # TODO: we have the same function at Data.py
     def add_pc(self,id, sub_id):
-        paths = self.get_id_value(id)
+        paths = self.__keys[id]
         paths[sub_id] = set()
 

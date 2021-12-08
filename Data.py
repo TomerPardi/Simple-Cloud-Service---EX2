@@ -84,7 +84,7 @@ class Data:
 
     def create_folder(self, rel_path, client_id, sub_id):
         path = os.path.join(self.__paths[client_id], rel_path)
-        os.makedirs(os.path.dirname(path), exist_ok=True)
+        os.makedirs(path, exist_ok=True)
         command = "created_dir" + "," + "true" + "," + rel_path
         self.update_computers(client_id, sub_id, command)
 
@@ -104,19 +104,14 @@ class Data:
 
     def delete_folder(self, rel_path, client_id, sub_id):
         path = os.path.join(self.__paths[client_id], rel_path)
-        Utils.delete_dir(path)
+        self.delete_dir(path)
         command = "deleted_folder" + "," + "true" + "," + rel_path
         self.update_computers(client_id, sub_id, command)
 
-
     # this function is for saving for each ID the computers that connects under this ID
-    # we want to identify each computer by its path TODO: change it to identify by socket
+    # we want to identify each computer by its path
     def add_pc(self, id, sub_id, client):
-        id_dict = self.identifies.get_id_value(id)
-        # TODO: identify each pc by its socket
-        id_dict[sub_id] = set()  # this dictionary will hold for each key set of updates.
-        # send the ID folder to new pc we just registered
-        # self.send_folder(self.__paths[id], client)
+        self.identifies.add_pc(id, sub_id)
 
     # function that call send folder function
     def send_folder_to_new_pc(self, id, client):
@@ -143,13 +138,13 @@ class Data:
 
     def update_client(self, client_id, sub_id, client):
         if self.identifies.get_size_of_sub_id_set(client_id, sub_id) == 0:
-            client.sendall(b"no_updates")
+            client.sendall(b"no_updates" + b"\n")
         else:
             for command in self.identifies.get_sub_id_set(client_id, sub_id):
-                client.sendall(command.encode())
-                string = client.recv(1024)
-                while string != b"got_message":
-                    string += self.__sock.recv(64)
+                client.sendall(command.encode() + b"\n")
+                with client, client.makefile('rb') as client_file:
+                    string = client_file.readline().decode().strip()
+
                 # in case of our logic we now need to send file
                 command = command.split(",")
                 if command[0] == "created_file":
@@ -158,3 +153,15 @@ class Data:
                     Utils.send_file(client, rel_path, src_path)
         # now we want to clear the set - after update done
         self.identifies.get_sub_id_set(client_id, sub_id).clear()
+
+    def delete_dir(self, path):
+        if not os.path.exists(path):
+            return
+        for root, dirs, files in os.walk(path, topdown=False):
+            for file in files:
+                file_path = os.path.join(root, file)
+                os.remove(file_path)
+            for dir in dirs:
+                dir_path = os.path.join(root, dir)
+                os.rmdir(dir_path)
+        os.rmdir(path)
