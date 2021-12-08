@@ -87,6 +87,8 @@ class Server:
         if os.path.exists(src_path):
             dest_path = os.path.join(self.__data.paths[client_id], new_path)
             os.rename(src_path, dest_path)
+            command = "rename" + "," + "null" + "," + src_path + "," + dest_path
+            self.__data.update_computers(client_id, sub_id, command)
 
 
 if __name__ == '__main__':

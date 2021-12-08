@@ -92,7 +92,7 @@ class Data:
         path = os.path.join(self.paths[client_id], rel_path)
         dir_name = os.path.dirname(path) # get the path without last component
         print("here1")
-        Utils.receive_file(client, dir_name)
+        Utils.receive_folder(client, dir_name)
         command = "created_file" + "," + "false" + "," + rel_path
         self.update_computers(client_id, sub_id, command)
 

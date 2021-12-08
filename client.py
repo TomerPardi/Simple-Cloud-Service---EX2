@@ -193,6 +193,12 @@ class Client:
             dir_name = os.path.dirname(path)  # get the path without last component
             Utils.receive_folder(self.__sock, dir_name)
             self.__LAST_UPDATE_MADE = path
+        elif command == "rename":
+            dest_path = os.path.join(self.__path, message[3])
+            src_path = os.path.join(self.__path, rel_path)
+            if os.path.exists(src_path):
+                os.rename(src_path, dest_path)
+            self.__LAST_UPDATE_MADE = src_path # TODO think about future bugs
 
 
     def start(self):
