@@ -73,6 +73,7 @@ class Client:
 
     def on_any_event(self, event):
         if event.src_path == self.LAST_UPDATE_MADE:
+            self.LAST_UPDATE_MADE = ""
             return # the event was an update from server, ignore it
         self.__sock.connect((self.__ip_address, self.__server_port))
         rel_path = os.path.relpath(event.src_path, self.__path)
