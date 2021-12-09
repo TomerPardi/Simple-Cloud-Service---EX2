@@ -1,7 +1,12 @@
+"""
+* Authors: Tomer Pardilov and Yoav Otmazgin
+* Program for server's logic
+* Linux OS support only
+* args: Port number
+"""
+
 import os.path
 import sys
-import time
-
 from Data import Data
 from socket import *
 
@@ -10,36 +15,41 @@ from socket import *
 class Server:
     # constructor
     def __init__(self):
-        self.__sock = socket()  # create socket for server
-        self.__data = Data(self.__sock)  # here we have ID dictionary
-        self.__sock.bind(('', int(sys.argv[1])))  # bind to port as usual
-        self.__sock.listen()  # be ready to get clients
+        self.__sock = socket()
+        self.__data = Data(self.__sock)
+        self.__sock.bind(('', int(sys.argv[1])))
+        self.__sock.listen()
 
     # handle new connections from server-client
     def id_manager(self,  id, sub_id, client):
         # in case the client didn't specify id number
         if id == "no_id":
-            id = self.__data.add_client()  # generate id
-            client.sendall(id.encode() + b"\n")  # sent it to client
+            # generate id
+            id = self.__data.add_client()
+            client.sendall(id.encode() + b"\n")
             self.__data.identifies.add_pc(id, sub_id)
-            self.__data.receive_folder(id, sub_id, client)  # receive the folder from client
-        else:  # connection from new pc under known ID
-            self.__data.add_pc(id, sub_id, client)  # add pc to dictionary
-            self.__data.send_folder_to_new_pc(id, client)  # sent the folder to new pc
+            self.__data.receive_folder(id, sub_id, client)
+        # connection from new pc under known ID
+        else:
+            self.__data.add_pc(id, sub_id, client)
+            self.__data.send_folder_to_new_pc(id, client)
 
-
+    # function to handle folder creation
     def handle_dir_create(self, rel_path, is_dir, client_id, sub_id):
         self.__data.create_folder(rel_path, client_id, sub_id)
 
+    # function to handle file creation
     def handle_file_create(self, rel_path, is_dir, client_id, sub_id, client):
         self.__data.create_file(rel_path, client_id, sub_id, client)
 
+    # function to handle deletion of folder or file
     def handle_deleted(self, rel_path, is_dir, client_id, sub_id):
         if is_dir:
             self.__data.delete_folder(rel_path, client_id, sub_id)
         else:
             self.__data.delete_file(rel_path, client_id, sub_id)
 
+    # handle update request from client
     def handle_update(self, client_id, sub_id, client):
         self.__data.update_client(client_id, sub_id, client)
 
@@ -60,20 +70,23 @@ class Server:
                 self.id_manager(id, sub_id, client)
             elif message != "":
                 message_parts = message.split(",")
-                # print(message_parts)
                 command = message_parts[0]  # get the command
                 rel_path = message_parts[1]
                 is_dir = message_parts[2]
                 client_id = message_parts[3]
                 sub_id = message_parts[4]
+
                 if command == "created_dir":
                     self.handle_dir_create(rel_path, is_dir, client_id, sub_id)
+
                 if command == "created_file":
                     self.handle_file_create(rel_path, is_dir, client_id, sub_id, client)
+
                 if command == "deleted":
                     path = os.path.join(self.__data.paths[client_id], rel_path)
                     isdir = os.path.isdir(path)
                     self.handle_deleted(rel_path, isdir, client_id, sub_id)
+
                 if command == "update":
                     self.handle_update(client_id, sub_id, client)
 
@@ -81,6 +94,7 @@ class Server:
                     new_path = message_parts[5]
                     self.handle_rename(rel_path, new_path, is_dir, client_id, sub_id)
 
+    # handle rename of file or folder
     def handle_rename(self, rel_path, new_path, is_dir, client_id, sub_id):
         src_path = os.path.join(self.__data.paths[client_id], rel_path)
         if os.path.exists(src_path):
@@ -90,6 +104,7 @@ class Server:
             self.__data.update_computers(client_id, sub_id, command)
 
 
+# start of server's program
 if __name__ == '__main__':
     server = Server()
     while True:
