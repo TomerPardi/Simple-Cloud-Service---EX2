@@ -1,7 +1,7 @@
 """
 * Authors: Tomer Pardilov and Yoav Otmazgin
 * Program for client
-* Linux OS
+* Linux OS support only
 * args: IP address of server, server's port, local path, sleep time and ID number (optional)
 """
 

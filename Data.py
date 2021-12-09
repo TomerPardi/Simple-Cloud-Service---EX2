@@ -1,26 +1,31 @@
+"""
+* Authors: Tomer Pardilov and Yoav Otmazgin
+* Util class for server.
+* Linux OS support only
+"""
+
 import random
 import string
-
 import Utils
 from IDs import IDs
 import os
 
-# this variable is for sending folder
+# global variable
 chunk_size = 1_000_000
 
 
 # class that holds all data dictionary for server side.
 class Data:
-    # constructor, we are declaring dictionary for IDs, for each ID we have more dictionary for each pc that connects
+    # constructor, we are declaring dictionary for IDs, for each ID we have more dictionary for each pc
     def __init__(self, sock):
-        self.paths = dict()  # dict to map between ID and its path in server's side
-        self.__sock = sock  # server's socket
-        self.identifies = IDs()  # ID dict
-        directory_path = os.getcwd()  # get current main's path (current folder)
-        # Directory
+        self.paths = dict()
+        self.__sock = sock
+        self.identifies = IDs()
+        # program's path
+        directory_path = os.getcwd()
         directory = "ServerData"
-        # Path
-        self.__mypath = os.path.join(directory_path, directory)  # generate path name
+        # generate path name
+        self.__mypath = os.path.join(directory_path, directory)
         os.mkdir(self.__mypath)  # make the directory
 
     # this function is for getting data from new computer that connects with known ID
@@ -30,7 +35,7 @@ class Data:
             while True:
                 raw = clientfile.readline()
                 if not raw: break  # no more files, server closed connection.
-
+                # TODO: change "empty dirs:"
                 if raw.strip().decode() == "empty dirs:":
                     while True:
                         raw = clientfile.readline()
@@ -60,17 +65,6 @@ class Data:
                     # socket was closed early.
                     break
 
-    # TODO: why is this function here?
-    def send_file(self, path):
-        self.__sock.send(path)
-        self.__sock.receive()
-        file = open(path)
-        line = file.read(1024)
-        while line:
-            self.__sock.send(line)
-            line = file.read(1024)
-        self.__sock.receive()
-
     # function to add new client to our dictionary, in case he didn't has ID
     def add_client(self):
         # create random ID number
@@ -84,17 +78,20 @@ class Data:
         self.paths[id] = path
         return id
 
+    # add new command  for each computer of specified client
     def update_computers(self, id, pc_id, command):
         for sub_id in self.identifies.get_id_dict(id).keys():
             if sub_id != pc_id:
                 self.identifies.get_sub_id_set(id, sub_id).append(command)
 
+    # function to handle folder creation
     def create_folder(self, rel_path, client_id, sub_id):
         path = os.path.join(self.paths[client_id], rel_path)
         os.makedirs(path, exist_ok=True)
         command = "created_dir" + "," + "true" + "," + rel_path
         self.update_computers(client_id, sub_id, command)
 
+    # function to handle file creation
     def create_file(self, rel_path, client_id, sub_id, client):
         path = os.path.join(self.paths[client_id], rel_path)
         dir_name = os.path.dirname(path) # get the path without last component
@@ -102,6 +99,7 @@ class Data:
         command = "created_file" + "," + "false" + "," + rel_path
         self.update_computers(client_id, sub_id, command)
 
+    # function to handle file deletion
     def delete_file(self, rel_path, client_id, sub_id):
         path = os.path.join(self.paths[client_id], rel_path)
         if os.path.exists(path):
@@ -109,6 +107,7 @@ class Data:
             command = "deleted_file" + "," + "false" + "," + rel_path
             self.update_computers(client_id, sub_id, command)
 
+    # function to handle folder deletion
     def delete_folder(self, rel_path, client_id, sub_id):
         path = os.path.join(self.paths[client_id], rel_path)
         self.delete_dir(path)
@@ -124,45 +123,26 @@ class Data:
     def send_folder_to_new_pc(self, id, client):
         Utils.send_folder(self.paths[id], client)
 
-    # function that sends folder to receiver TODO: we have the same function at Utils - check it
-    def send_folder(self, source_path, client):
-        with client:
-            for path, dirs, files in os.walk(source_path):
-                for file in files:
-                    filename = os.path.join(path, file)
-                    relpath = os.path.relpath(filename, source_path)
-                    filesize = os.path.getsize(filename)
-
-                    with open(filename, 'rb') as f:
-                        client.sendall(relpath.encode() + b'\n')
-                        client.sendall(str(filesize).encode() + b'\n')
-
-                        # Send the file in chunks so large files can be handled.
-                        while True:
-                            data = f.read(chunk_size)
-                            if not data: break
-                            client.sendall(data)
-
+    # update client for each data we need to sync
     def update_client(self, client_id, sub_id, client):
         if self.identifies.get_size_of_sub_id_set(client_id, sub_id) == 0:
             client.sendall(b"no_updates" + b"\n")
         else:
             for command in self.identifies.get_sub_id_set(client_id, sub_id):
                 client.sendall(command.encode() + b"\n")
-                # with client, client.makefile('rb') as client_file:
-                #    string = client_file.readline().decode().strip()
 
                 # in case of our logic we now need to send file
                 command = command.split(",")
                 if command[0] == "created_file":
                     rel_path = command[2]
                     src_path = os.path.join(self.paths[client_id], rel_path)
-
                     Utils.send_file(client, rel_path, src_path)
+
             client.sendall(b"finished_updates" + b"\n")
         # now we want to clear the set - after update done
         self.identifies.get_sub_id_set(client_id, sub_id).clear()
 
+    # function to delete folder recursively
     def delete_dir(self, path):
         if not os.path.exists(path):
             return
