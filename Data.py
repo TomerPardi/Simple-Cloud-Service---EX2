@@ -29,7 +29,6 @@ class Data:
         with client, client.makefile('rb') as clientfile:
             while True:
                 raw = clientfile.readline()
-                print(raw)
                 if not raw: break  # no more files, server closed connection.
 
                 if raw.strip().decode() == "empty dirs:":
@@ -88,7 +87,7 @@ class Data:
     def update_computers(self, id, pc_id, command):
         for sub_id in self.identifies.get_id_dict(id).keys():
             if sub_id != pc_id:
-                self.identifies.get_sub_id_set(id, sub_id).add(command)
+                self.identifies.get_sub_id_set(id, sub_id).append(command)
 
     def create_folder(self, rel_path, client_id, sub_id):
         path = os.path.join(self.paths[client_id], rel_path)
@@ -99,7 +98,6 @@ class Data:
     def create_file(self, rel_path, client_id, sub_id, client):
         path = os.path.join(self.paths[client_id], rel_path)
         dir_name = os.path.dirname(path) # get the path without last component
-        print("here1")
         Utils.receive_file(client, dir_name)
         command = "created_file" + "," + "false" + "," + rel_path
         self.update_computers(client_id, sub_id, command)
@@ -151,15 +149,17 @@ class Data:
         else:
             for command in self.identifies.get_sub_id_set(client_id, sub_id):
                 client.sendall(command.encode() + b"\n")
-                with client, client.makefile('rb') as client_file:
-                    string = client_file.readline().decode().strip()
+                # with client, client.makefile('rb') as client_file:
+                #    string = client_file.readline().decode().strip()
 
                 # in case of our logic we now need to send file
                 command = command.split(",")
                 if command[0] == "created_file":
                     rel_path = command[2]
-                    src_path = os.path.join(self.paths[id], rel_path)
+                    src_path = os.path.join(self.paths[client_id], rel_path)
+
                     Utils.send_file(client, rel_path, src_path)
+            client.sendall(b"finished_updates" + b"\n")
         # now we want to clear the set - after update done
         self.identifies.get_sub_id_set(client_id, sub_id).clear()
 

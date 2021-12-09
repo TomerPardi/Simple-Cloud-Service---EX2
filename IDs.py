@@ -28,5 +28,4 @@ class IDs:
     # TODO: we have the same function at Data.py
     def add_pc(self,id, sub_id):
         paths = self.__keys[id]
-        paths[sub_id] = set()
-
+        paths[sub_id] = []

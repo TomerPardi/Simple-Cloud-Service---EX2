@@ -1,21 +1,22 @@
 import os
+import time
 
 chunk_size = 1_000_000
 
 
 def send_file(sock, relpath, filepath):
     filesize = os.path.getsize(filepath)
-    string = sock.recv(1024)
-    while string != b"ready":
-        string += sock.recv(1024)
-    with open(filepath, 'rb') as f:
-        sock.sendall(relpath.encode() + b'\n')
-        sock.sendall(str(filesize).encode() + b'\n')
-        # Send the file in chunks so large files can be handled.
-        data = f.read(chunk_size)
-        while data:
-            sock.sendall(data)
+    # time.sleep(0.5)
+    with sock, sock.makefile('rb') as server_file:
+        message = server_file.readline().decode().strip()
+        with open(filepath, 'rb') as f:
+            sock.sendall(relpath.encode() + b'\n')
+            sock.sendall(str(filesize).encode() + b'\n')
+            # Send the file in chunks so large files can be handled.
             data = f.read(chunk_size)
+            while data:
+                sock.sendall(data)
+                data = f.read(chunk_size)
 
 # TODO: look like this function can handle receiving file also. if yes, we need to give it client's path in server.
 def receive_folder(sock, local_path):
@@ -55,16 +56,13 @@ def receive_folder(sock, local_path):
 
 # TODO: be aware its not like in data!!!!!!! its for receive files
 def receive_file(sock, local_path):
-    print("here2")
     with sock, sock.makefile('rb') as clientfile:
-        sock.sendall(b"ready")
+        sock.sendall(b"ready" + b"\n")
         while True:
             raw = clientfile.readline()
-            print(raw)
             if not raw: break  # no more files, server closed connection.
 
             filename = raw.strip().decode()
-            print(filename)
             length = int(clientfile.readline())
 
             filename = os.path.basename(filename)
@@ -87,6 +85,7 @@ def receive_file(sock, local_path):
 
 
 def send_folder(source_path, receiver):
+    time.sleep(0.5)
     with receiver:
         for path, dirs, files in os.walk(source_path):
             for file in files:

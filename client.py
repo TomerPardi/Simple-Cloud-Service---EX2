@@ -32,7 +32,7 @@ class Client:
         self.__sock.sendall(b"null sub id" + b"\n")
         with self.__sock, self.__sock.makefile('rb') as server_file:
             self.__sub_id = server_file.readline().decode().strip()
-            Utils.receive_folder(self.__sock, self.__path)
+            self.receive_folder(self.__sock, self.__path)
 
     def delete_dir(self, path):
         if not os.path.exists(path):
@@ -58,7 +58,7 @@ class Client:
         with self.__sock, self.__sock.makefile('rb') as server_file:
             self.__id = server_file.readline().decode().strip()
 
-            Utils.send_folder(self.__path, self.__sock)
+            self.send_folder(self.__path, self.__sock)
 
     def handle_created_dir(self, rel_path, is_dir):
         update_msg = "created_dir" + ',' + rel_path + ',' + is_dir + "," + self.__id + "," + self.__sub_id
@@ -66,24 +66,24 @@ class Client:
 
     def handle_created_file(self, rel_path, is_dir, event, flag):
         update_msg = "created_file" + ',' + rel_path + ',' + is_dir + "," + self.__id + "," + self.__sub_id
-        print(update_msg)
         self.__sock.sendall(update_msg.encode() + b"\n")
-        print(rel_path)
         if flag:
-            Utils.send_file(self.__sock, rel_path,  event.dest_path)
+            self.send_file(self.__sock, rel_path,  event.dest_path)
         else:
-            Utils.send_file(self.__sock, rel_path, event.src_path)
+            self.send_file(self.__sock, rel_path, event.src_path)
 
     def handle_deleted(self, rel_path, is_dir):
         update_msg = "deleted" + ',' + rel_path + ',' + is_dir + "," + self.__id + "," + self.__sub_id
-        print(update_msg)
         self.__sock.sendall(update_msg.encode() + b"\n")
 
     def on_any_event(self, event):
-        if event.event_type == "modified" or event.src_path.split(".")[-1] == "swp":
+
+        if event.event_type == "modified" or event.event_type == "closed" or event.src_path.split(".")[-1] == "swp":
             return
         if "goutputstream" in event.src_path and event.event_type == "created":
             return
+        print("this is src path " + event.src_path + " " + event.event_type)
+        print("this is last update: " + self.LAST_UPDATE_MADE)
         if event.src_path == self.LAST_UPDATE_MADE:
             self.LAST_UPDATE_MADE = ""
             return # the event was an update from server, ignore it
@@ -99,21 +99,16 @@ class Client:
             if is_dir == "True":
                 self.handle_created_dir(rel_path, is_dir)
             else:
-                print("create file")
                 self.handle_created_file(rel_path, is_dir, event, 0)
 
         if event_type == "deleted":
-            print("deleted" + " " + is_dir)
             self.handle_deleted(rel_path, is_dir)
 
         if event_type == "moved":
             new_path = os.path.relpath(event.dest_path, self.__path)
             # modify file
             if "goutputstream" in event.src_path:
-                print("now here")
-                print(new_path)
                 self.handle_deleted(new_path, is_dir)
-                print("handled deleted move on to create again")
                 self.__sock.close()
                 self.__sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 self.__sock.connect((self.__ip_address, self.__server_port))
@@ -167,39 +162,45 @@ class Client:
         self.__sock.sendall(message.encode() + b"\n")
 
         # from now on receive data from server
+
         with self.__sock, self.__sock.makefile('rb') as server_file:
-            message = server_file.readline().decode().strip()
-        print(message)
-        if message == "no_updates":
-            return
-        message = message.split(",")
-        command = message[0]
-        is_dir = message[1]
-        rel_path = message[2]
-        if command == "deleted_file":
-            path = os.path.join(self.__path, rel_path)
-            if os.path.exists(path):
-                os.remove(path)
-            self.__LAST_UPDATE_MADE = path
-        # TODO think of better way to handle this situation (import client in Utils)
-        elif command == "deleted_folder":
-            path = os.path.join(self.__path, rel_path)
-            self.delete_dir(path)
-        elif command == "created_dir":
-            path = os.path.join(self.__path, rel_path)
-            os.makedirs(os.path.dirname(path), exist_ok=True)
-            self.__LAST_UPDATE_MADE = path
-        elif command == "created_file":
-            path = os.path.join(self.__path, rel_path)
-            dir_name = os.path.dirname(path)  # get the path without last component
-            Utils.receive_file(self.__sock, dir_name)
-            self.__LAST_UPDATE_MADE = path
-        elif command == "rename":
-            dest_path = os.path.join(self.__path, message[3])
-            src_path = os.path.join(self.__path, rel_path)
-            if os.path.exists(src_path):
-                os.rename(src_path, dest_path)
-            self.__LAST_UPDATE_MADE = src_path # TODO think about future bugs
+            while True:
+                message = server_file.readline().decode().strip()
+                if message == "no_updates" or message == "finished_updates" or not message:
+                    return
+                print("this is a message -------" + message)
+                message = message.split(",")
+                command = message[0]
+                # is_dir = message[1]
+                rel_path = message[2]
+                if command == "deleted_file":
+                    path = os.path.join(self.__path, rel_path)
+                    if os.path.exists(path):
+                        self.LAST_UPDATE_MADE = path
+                        os.remove(path)
+                    print(self.LAST_UPDATE_MADE)
+                    print("+++++++++++ deleted file")
+                # TODO think of better way to handle this situation (import client in Utils)
+                elif command == "deleted_folder":
+                    path = os.path.join(self.__path, rel_path)
+                    self.delete_dir(path)
+                elif command == "created_dir":
+                    path = os.path.join(self.__path, rel_path)
+                    os.makedirs(path, exist_ok=True)
+                    self.LAST_UPDATE_MADE = path
+                elif command == "created_file":
+                    path = os.path.join(self.__path, rel_path)
+                    print("gonna create " + path)
+                    dir_name = os.path.dirname(path)  # get the path without last component
+                    self.receive_file(self.__sock, dir_name)
+                    #self.LAST_UPDATE_MADE = path
+                    #print(self.LAST_UPDATE_MADE)
+                elif command == "rename":
+                    dest_path = os.path.join(self.__path, message[3])
+                    src_path = os.path.join(self.__path, rel_path)
+                    if os.path.exists(src_path):
+                        os.rename(src_path, dest_path)
+                    self.LAST_UPDATE_MADE = src_path # TODO think about future bugs
 
 
     def start(self):
@@ -218,6 +219,109 @@ class Client:
         # print(update_msg)
         self.__sock.sendall(update_msg.encode() + b"\n")
         pass
+
+    def send_file(self, sock, relpath, filepath):
+        filesize = os.path.getsize(filepath)
+        # time.sleep(0.5)
+        with sock, sock.makefile('rb') as server_file:
+            message = server_file.readline().decode().strip()
+            with open(filepath, 'rb') as f:
+                sock.sendall(relpath.encode() + b'\n')
+                sock.sendall(str(filesize).encode() + b'\n')
+                # Send the file in chunks so large files can be handled.
+                data = f.read(chunk_size)
+                while data:
+                    sock.sendall(data)
+                    data = f.read(chunk_size)
+
+    # TODO: look like this function can handle receiving file also. if yes, we need to give it client's path in server.
+    def receive_folder(self, sock, local_path):
+        with sock, sock.makefile('rb') as clientfile:
+
+            while True:
+                raw = clientfile.readline()
+                if not raw: break  # no more files, server closed connection.
+
+                if raw.strip().decode() == "empty dirs:":
+                    while True:
+                        raw = clientfile.readline()
+                        if not raw:
+                            break
+                        dir_name = raw.strip().decode()
+                        dir_path = os.path.join(local_path, dir_name)
+                        os.makedirs(dir_path, exist_ok=True)
+                else:
+                    filename = raw.strip().decode()
+                    length = int(clientfile.readline())
+
+                    path = os.path.join(local_path, filename)
+                    os.makedirs(os.path.dirname(path), exist_ok=True)
+
+                    # Read the data in chunks so it can handle large files.
+                    with open(path, 'wb') as f:
+                        while length:
+                            chunk = min(length, chunk_size)
+                            data = clientfile.read(chunk)
+                            if not data: break
+                            f.write(data)
+                            length -= len(data)
+                        else:  # only runs if while doesn't break and length==0
+                            continue
+
+                    # socket was closed early.
+                    break
+
+    # TODO: be aware its not like in data!!!!!!! its for receive files
+    def receive_file(self, sock, local_path):
+        with sock, sock.makefile('rb') as clientfile:
+            sock.sendall(b"ready" + b"\n")
+            raw = clientfile.readline()
+            if not raw: return  # no more files, server closed connection.
+
+            filename = raw.strip().decode()
+            length = int(clientfile.readline())
+
+            filename = os.path.basename(filename)
+            path = os.path.join(local_path, filename)
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+
+            # Read the data in chunks so it can handle large files.
+            with open(path, 'wb') as f:
+                self.LAST_UPDATE_MADE = path
+                while length:
+                    chunk = min(length, chunk_size)
+                    data = clientfile.read(chunk)
+                    if not data: break
+                    f.write(data)
+                    length -= len(data)
+
+
+    def send_folder(self, source_path, receiver):
+        time.sleep(0.5)
+        with receiver:
+            for path, dirs, files in os.walk(source_path):
+                for file in files:
+                    filename = os.path.join(path, file)
+                    relpath = os.path.relpath(filename, source_path)
+                    filesize = os.path.getsize(filename)
+
+                    with open(filename, 'rb') as f:
+                        receiver.sendall(relpath.encode() + b'\n')
+                        receiver.sendall(str(filesize).encode() + b'\n')
+
+                        # Send the file in chunks so large files can be handled.
+                        while True:
+                            data = f.read(chunk_size)
+                            if not data: break
+                            receiver.sendall(data)
+            # for empty folders
+            receiver.sendall("empty dirs:".encode() + b'\n')
+            for root, dirs, files in os.walk(source_path):
+                for directory in dirs:
+                    d = os.path.join(root, directory)
+                    if not os.listdir(d):
+                        d = os.path.relpath(d, source_path)
+                        receiver.sendall(d.encode() + b'\n')
 
 
 if __name__ == '__main__':
