@@ -1,4 +1,10 @@
-# class that manages ID dictionary
+"""
+* Authors: Tomer Pardilov and Yoav Otmazgin
+* Class to handle ID dictionary
+* Linux OS support only
+"""
+
+
 class IDs:
     def __init__(self):
         self.__keys = dict()
@@ -14,9 +20,7 @@ class IDs:
         return len(self.__keys[id])
 
     def get_size_of_sub_id_set(self, id, sub_id):
-        # print(id + " " + sub_id)
         set = self.__keys[id][sub_id]
-        # print(len(set))
         return len(set)
 
     def get_id_dict(self, id):
@@ -25,7 +29,6 @@ class IDs:
     def get_sub_id_set(self, id, sub_id):
         return self.__keys[id][sub_id]
 
-    # TODO: we have the same function at Data.py
     def add_pc(self,id, sub_id):
         paths = self.__keys[id]
         paths[sub_id] = []

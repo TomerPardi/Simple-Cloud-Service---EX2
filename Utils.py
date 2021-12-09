@@ -1,12 +1,17 @@
+"""
+* Authors: Tomer Pardilov and Yoav Otmazgin
+* utils class
+* Linux OS support only
+"""
+
 import os
 import time
-
 chunk_size = 1_000_000
 
 
+# function to handle file sending over connection
 def send_file(sock, relpath, filepath):
     filesize = os.path.getsize(filepath)
-    # time.sleep(0.5)
     with sock, sock.makefile('rb') as server_file:
         message = server_file.readline().decode().strip()
         with open(filepath, 'rb') as f:
@@ -18,13 +23,14 @@ def send_file(sock, relpath, filepath):
                 sock.sendall(data)
                 data = f.read(chunk_size)
 
-# TODO: look like this function can handle receiving file also. if yes, we need to give it client's path in server.
+
+# function to handle folder receiving over connection
 def receive_folder(sock, local_path):
     with sock, sock.makefile('rb') as clientfile:
         while True:
             raw = clientfile.readline()
             if not raw: break  # no more files, server closed connection.
-
+            # TODO: change "empty dirs:"
             if raw.strip().decode() == "empty dirs:":
                 while True:
                     raw = clientfile.readline()
@@ -54,7 +60,8 @@ def receive_folder(sock, local_path):
                 # socket was closed early.
                 break
 
-# TODO: be aware its not like in data!!!!!!! its for receive files
+
+# function to handle file receiving over connection
 def receive_file(sock, local_path):
     with sock, sock.makefile('rb') as clientfile:
         sock.sendall(b"ready" + b"\n")
@@ -84,6 +91,7 @@ def receive_file(sock, local_path):
             break
 
 
+# function to handle send a folder over connection
 def send_folder(source_path, receiver):
     time.sleep(0.5)
     with receiver:
@@ -102,7 +110,7 @@ def send_folder(source_path, receiver):
                         data = f.read(chunk_size)
                         if not data: break
                         receiver.sendall(data)
-        # for empty folders
+        # TODO: change name "empty dirs:"
         receiver.sendall("empty dirs:".encode() + b'\n')
         for root, dirs, files in os.walk(source_path):
             for directory in dirs:
