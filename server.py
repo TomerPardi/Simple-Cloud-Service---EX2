@@ -7,7 +7,7 @@
 
 import random
 import string
-import Utils
+import utils
 import os
 import os.path
 import sys
@@ -191,7 +191,7 @@ class Data:
     def create_file(self, rel_path, client_id, sub_id, client):
         path = os.path.join(self.paths[client_id], rel_path)
         dir_name = os.path.dirname(path) # get the path without last component
-        Utils.receive_file(client, dir_name)
+        utils.receive_file(client, dir_name)
         command = "created_file" + "," + "false" + "," + rel_path
         self.update_computers(client_id, sub_id, command)
 
@@ -217,7 +217,7 @@ class Data:
 
     # function that call send folder function
     def send_folder_to_new_pc(self, id, client):
-        Utils.send_folder(self.paths[id], client)
+        utils.send_folder(self.paths[id], client)
 
     # update client for each data we need to sync
     def update_client(self, client_id, sub_id, client):
@@ -232,7 +232,7 @@ class Data:
                 if command[0] == "created_file":
                     rel_path = command[2]
                     src_path = os.path.join(self.paths[client_id], rel_path)
-                    Utils.send_file(client, rel_path, src_path)
+                    utils.send_file(client, rel_path, src_path)
 
             client.sendall(b"finished_updates" + b"\n")
         # now we want to clear the set - after update done
