@@ -86,7 +86,7 @@ def receive_file(sock, local_path):
             break
 
 
-def send_folder(self, source_path, receiver):
+def send_folder(source_path, receiver):
     with receiver:
         for path, dirs, files in os.walk(source_path):
             for file in files:
