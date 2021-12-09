@@ -213,8 +213,6 @@ class Client:
             self.__id = sys.argv[5]
             self.handle_new_pc(self.__id)
         else: self.handle_new_client()
-        # print ID
-        print(self.__id)
         self.__sock.close()
         # start watchdog observation
         self.start_observe()
