@@ -21,10 +21,12 @@ class Server:
         if id == "no_id":
             id = self.__data.add_client()  # generate id
             client.sendall(id.encode() + b"\n")  # sent it to client
+            self.__data.identifies.add_pc(id, sub_id)
             self.__data.receive_folder(id, sub_id, client)  # receive the folder from client
         else:  # connection from new pc under known ID
-            self.__data.send_folder_to_new_pc(id, client)  # sent the folder to new pc
             self.__data.add_pc(id, sub_id, client)  # add pc to dictionary
+            self.__data.send_folder_to_new_pc(id, client)  # sent the folder to new pc
+
 
     def handle_dir_create(self, rel_path, is_dir, client_id, sub_id):
         self.__data.create_folder(rel_path, client_id, sub_id)
@@ -59,7 +61,7 @@ class Server:
                 self.id_manager(id, sub_id, client)
             elif message != "":
                 message_parts = message.split(",")
-                print(message_parts)
+                # print(message_parts)
                 command = message_parts[0]  # get the command
                 rel_path = message_parts[1]
                 is_dir = message_parts[2]

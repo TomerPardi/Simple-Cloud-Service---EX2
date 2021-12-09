@@ -25,33 +25,41 @@ class Data:
 
     # this function is for getting data from new computer that connects with known ID
     def receive_folder(self, id, sub_id, client):
-        # an function to add new pc under known ID
-        self.identifies.add_pc(id, sub_id)
         # the process that copies the files from new pc to IDs folder in server side
         with client, client.makefile('rb') as clientfile:
             while True:
                 raw = clientfile.readline()
+                print(raw)
                 if not raw: break  # no more files, server closed connection.
 
-                filename = raw.strip().decode()
-                length = int(clientfile.readline())
+                if raw.strip().decode() == "empty dirs:":
+                    while True:
+                        raw = clientfile.readline()
+                        if not raw:
+                            break
+                        dir_name = raw.strip().decode()
+                        dir_path = os.path.join(self.paths[id], dir_name)
+                        os.makedirs(dir_path, exist_ok=True)
+                else:
+                    filename = raw.strip().decode()
+                    length = int(clientfile.readline())
 
-                path = os.path.join(self.paths[id], filename)
-                os.makedirs(os.path.dirname(path), exist_ok=True)
+                    path = os.path.join(self.paths[id], filename)
+                    os.makedirs(os.path.dirname(path), exist_ok=True)
 
-                # Read the data in chunks so it can handle large files.
-                with open(path, 'wb') as f:
-                    while length:
-                        chunk = min(length, chunk_size)
-                        data = clientfile.read(chunk)
-                        if not data: break
-                        f.write(data)
-                        length -= len(data)
-                    else:  # only runs if while doesn't break and length==0
-                        continue
+                    # Read the data in chunks so it can handle large files.
+                    with open(path, 'wb') as f:
+                        while length:
+                            chunk = min(length, chunk_size)
+                            data = clientfile.read(chunk)
+                            if not data: break
+                            f.write(data)
+                            length -= len(data)
+                        else:  # only runs if while doesn't break and length==0
+                            continue
 
-                # socket was closed early.
-                break
+                    # socket was closed early.
+                    break
 
     # TODO: why is this function here?
     def send_file(self, path):
@@ -80,7 +88,7 @@ class Data:
     def update_computers(self, id, pc_id, command):
         for sub_id in self.identifies.get_id_dict(id).keys():
             if sub_id != pc_id:
-                self.identifies.get_sub_id_set(id, sub_id)[id].append(command)
+                self.identifies.get_sub_id_set(id, sub_id).add(command)
 
     def create_folder(self, rel_path, client_id, sub_id):
         path = os.path.join(self.paths[client_id], rel_path)
@@ -92,7 +100,7 @@ class Data:
         path = os.path.join(self.paths[client_id], rel_path)
         dir_name = os.path.dirname(path) # get the path without last component
         print("here1")
-        Utils.receive_folder(client, dir_name)
+        Utils.receive_file(client, dir_name)
         command = "created_file" + "," + "false" + "," + rel_path
         self.update_computers(client_id, sub_id, command)
 

@@ -8,7 +8,7 @@ import Utils
 import time
 from watchdog.observers import Observer
 from watchdog.events import PatternMatchingEventHandler
-DELIM = "###endofmessage###"
+chunk_size = 1_000_000
 
 
 class Client:
@@ -32,7 +32,7 @@ class Client:
         self.__sock.sendall(b"null sub id" + b"\n")
         with self.__sock, self.__sock.makefile('rb') as server_file:
             self.__sub_id = server_file.readline().decode().strip()
-        Utils.receive_folder(self.__sock, self.__path)
+            Utils.receive_folder(self.__sock, self.__path)
 
     def delete_dir(self, path):
         if not os.path.exists(path):
@@ -169,6 +169,7 @@ class Client:
         # from now on receive data from server
         with self.__sock, self.__sock.makefile('rb') as server_file:
             message = server_file.readline().decode().strip()
+        print(message)
         if message == "no_updates":
             return
         message = message.split(",")
@@ -191,7 +192,7 @@ class Client:
         elif command == "created_file":
             path = os.path.join(self.__path, rel_path)
             dir_name = os.path.dirname(path)  # get the path without last component
-            Utils.receive_folder(self.__sock, dir_name)
+            Utils.receive_file(self.__sock, dir_name)
             self.__LAST_UPDATE_MADE = path
         elif command == "rename":
             dest_path = os.path.join(self.__path, message[3])
