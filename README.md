@@ -29,5 +29,5 @@ changes have been made to the client's folder on another computer.
 
 ## Implementation Info
 In this program we implement a **TCP server**.
-In order to keep track of folder changes we use **WatchDog python library** that helps us
+In order to keep track of folder changes, we use **WatchDog python library** that helps us
 monitor any changes made in a given path (in our case, path to the folder we want to monitor).
