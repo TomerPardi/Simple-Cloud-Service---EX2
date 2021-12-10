@@ -1,6 +1,6 @@
 # Simple Cloud Service Implementation
 ## General
-- This Python project is an implementation of simple **cloud file backup services**.
+- This Python project is an implementation of simple **cloud file backup service**.
 - This implementation supports Linux OS **only**.
 - The current project was written as part of an assignment we asked to make in _Introduction to Communication Networks_ 
 course at Bar Ilan University.
