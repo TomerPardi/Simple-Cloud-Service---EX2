@@ -8,8 +8,8 @@ course at Bar Ilan University.
 ## Logic
 Cloud file backup services usually offer customers the option to download client program to
 their computer that allows them:
-- to select a folder on their computer and synchronize it automatically with a server in any change.
-- use the server to sync client's different computers.
+- To select a folder on their computer and synchronize it automatically with a server in any change.
+- Use the server to sync client's different computers.
 
 That is, when the program is started, the client uploads to the server the files in the specified folder.
 from now on the program monitors any changes that occur in the folder recursively - i.e., even changes
